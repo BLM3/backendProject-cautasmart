@@ -1,5 +1,5 @@
 
-function Navbar() {
+function Navbar({setShowFavorites} ) {
     return (
         <nav className="bg-black text-white px-6 py-4 flex justify-between items-center">
 
@@ -8,11 +8,15 @@ function Navbar() {
             </h1>
 
             <div className="space-x-4">
-                <button className="hover:text-blue-400">
+                <button className="hover:text-blue-400"
+                        onClick={() =>
+                            setShowFavorites(false)
+                        }>
                     Home
                 </button>
 
-                <button className="hover:text-blue-400">
+                <button className="hover:text-blue-400"
+                        onClick={() => setShowFavorites(prev => !prev)}>
                     Favorites
                 </button>
 

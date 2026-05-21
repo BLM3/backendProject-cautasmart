@@ -1,18 +1,34 @@
 // import logo from './logo.svg';
 import './App.css';
-import React from 'react';
+import React, {useState} from 'react';
 import Navbar from './components/Navbar';
 import OfferList from './components/OfferList';
 import CompareBar from './components/CompareBar';
 function App() {
-  return (
-    <div className="App min-h-screen bg-gray-100">
+    const [compareItems,setCompareItems]=useState([]);
+    const [favorites, setFavorites] = useState(() => {
+        const saved = localStorage.getItem("favorites");
+        return saved ? JSON.parse(saved) : [];
+    });
 
-        <Navbar />
-        <OfferList />
-        <CompareBar />
-    </div>
-  );
+    const [showFavorites, setShowFavorites] = useState(false);
+
+    return (
+        <div className="App min-h-screen bg-gray-100">
+
+            <Navbar setShowFavorites={setShowFavorites}/>
+            <OfferList
+                compareItems={compareItems}
+                setCompareItems={setCompareItems}
+                favorites={favorites}
+                setFavorites={setFavorites}
+                showFavorites={showFavorites}
+            />
+            <CompareBar
+                compareItems={compareItems}
+            />
+        </div>
+      );
 }
 
 export default App;

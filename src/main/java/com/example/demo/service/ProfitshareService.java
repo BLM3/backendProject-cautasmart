@@ -1,5 +1,6 @@
 package com.example.demo.service;
 import com.example.demo.dto.OfferDTO;
+import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpHeaders;
@@ -25,52 +26,49 @@ import java.util.stream.Collectors;
 
 public class ProfitshareService {
 
+    private List<OfferDTO> offers;
+
     @Value("${profitshare.data.path}")
+    //@Value("${profitshare.data.path}")
     private String dataPath;
 
-    public List<OfferDTO> getOffers(
-            String keyword,
-            int page,
-            int size
-    ) throws IOException {
-
+    @PostConstruct
+    public void init() throws IOException{
         ObjectMapper mapper = new ObjectMapper();
-
-        // citește JSON -> array
         OfferDTO[] offersArray = mapper.readValue(
                 new File(dataPath),
                 OfferDTO[].class
         );
+        offers=Arrays.asList(offersArray);
+    }
 
-        // transformă în listă
-        List<OfferDTO> offers = new ArrayList<>(
-                Arrays.asList(offersArray)
-        );
+    public List<OfferDTO> getOffers(
+            String keyword,
+            int page,
+            int size)
+    {
+        List<OfferDTO> filtered=offers;
 
         // filtrare după keyword
         if (keyword != null && !keyword.isBlank()) {
 
-            String searchTerm = keyword.toLowerCase();
-
-            offers = offers.stream()
-                    .filter(offer ->
-                            offer.getName() != null &&
-                                    offer.getName()
-                                            .toLowerCase()
-                                            .contains(searchTerm)
-                    )
-                    .collect(Collectors.toList());
+            filtered=offers.stream()
+                    .filter(o->
+                            o.getName()
+                                    .toLowerCase()
+                                    .contains(keyword.toLowerCase()))
+                    .toList();
         }
 
         // calcul paginare
         int start = page * size;
 
-        if (start >= offers.size()) {
+        if (start >= filtered.size()) {
             return Collections.emptyList();
         }
 
-        int end = Math.min(start + size, offers.size());
+        int end = Math.min(start + size, filtered.size());
 
-        return offers.subList(start, end);
+        return filtered.subList(start, end);
     }
 }

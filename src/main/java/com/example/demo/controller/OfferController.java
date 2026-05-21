@@ -18,7 +18,6 @@ import java.util.List;
 @CrossOrigin(origins = "*") //http://localhost:3000 Permite apeluri de la frontend-ul React (portul 3000)
 
 public class OfferController {
-    @Autowired
     private final ProfitshareService profitshareService;
     public OfferController(ProfitshareService profitshareService) {
         this.profitshareService = profitshareService;

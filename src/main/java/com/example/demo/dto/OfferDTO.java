@@ -2,12 +2,6 @@ package com.example.demo.dto;
 import lombok.Data;//necesita Lombok
 @Data // Generează getters, setters, toString, etc.
 public class OfferDTO {
-//    private String name;
-//    private String description;
-//    private String landingPage;
-//    private String image;// URL către imaginea ofertei
-//    private String programName;// Numele programului de afiliere
-    // Poți adăuga mai multe câmpuri conform API-ului Profitshare
     private int id;
     private String name;
     private String description;

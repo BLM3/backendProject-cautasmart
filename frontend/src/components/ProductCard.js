@@ -1,4 +1,4 @@
-function ProductCard({ offer,favorites,setFavorites,compareItems,setCompareItems }) {
+function ProductCard({ offer,favorites=[],setFavorites,compareItems=[],setCompareItems }) {
     const isFavorite=favorites.some(item=>item.id===offer.id);
     const isCompared=compareItems.some(item=>item.id===offer.id);
     const toggleFavorite=()=>{
@@ -15,7 +15,6 @@ function ProductCard({ offer,favorites,setFavorites,compareItems,setCompareItems
             setCompareItems([...compareItems,offer]);
         }
     }
-
     return (
 
         <div className="
@@ -35,7 +34,8 @@ function ProductCard({ offer,favorites,setFavorites,compareItems,setCompareItems
                 gap-2
                 mt-4
             ">
-                <button onClick={toggleFavorite}className="
+                <button onClick={toggleFavorite}
+                        className="
                         flex-1
                         p-2
                         rounded

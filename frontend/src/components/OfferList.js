@@ -3,23 +3,32 @@ import axios from 'axios'; // Instalăm axios pentru cereri HTTP
 import ProductCard from './ProductCard';
 import SearchBar from './SearchBar';
 
-function OfferList() {
+function OfferList({favorites, setFavorites, showFavorites}) {
     const [offers, setOffers] = useState([]);
     const [loading, setLoading] = useState(true);
-    //const [error, setError] = useState(null);
+    const [error, setError] = useState(null);
     const [page, setPage] = useState(0);
-    const [favorites, setFavorites] = useState([]);
-    const [compareItems, setCompareItems] = useState([]);
+    const [compareItems,setCompareItems]=useState([]);
+
+    /*const [favorites, setFavorites] = useState(()=>{
+        const saved=localStorage.getItem("favorites");
+        return saved? JSON.parse(saved):[];
+    });*/
     const [searchTerm, setSearchTerm] = useState('');
     useEffect(() => {
-
+        localStorage.setItem("favorites", JSON.stringify(favorites));
+    },[favorites]);
+    useEffect(() => {
         const fetchOffers = async () => {
             try {
                 setLoading(true);
+                setError(null);
+                //const API_URL=process.env.REACT_APP_API_URL;
                 // Apelul către endpoint-ul backend-ului nostru Java
-                const response = await axios.get(`http://192.168.1.131:8080/api/offers?page=${page}&size=12&keyword=${searchTerm}`);//192.168.1.131
+                const response = await axios.get(`/api/offers?page=${page}&size=12&keyword=${searchTerm}`);//192.168.1.131
                 setOffers(response.data);
             } catch (err) {
+                setError("Nu s-au putut încărca produsele");
                 console.error("Eroare la preluarea ofertelor:", err);
             } finally {
                 setLoading(false);
@@ -27,7 +36,10 @@ function OfferList() {
         };
         fetchOffers();
     }, [page,searchTerm]); // Re-rulează când searchTerm se schimbă
-
+    const displayedOffers =
+        showFavorites
+            ? favorites
+            : offers;
     return (
 
         <div className="px-4">
@@ -42,7 +54,7 @@ function OfferList() {
                     Loading...
                 </p>
             )}
-
+            {error &&<p className="text-red-500">{error}</p>}
             <div className="
                 grid
                 grid-cols-1
@@ -52,7 +64,7 @@ function OfferList() {
                 gap-6
             ">
 
-                {offers.map((offer) => (
+                {displayedOffers.map((offer) => (
 
                     <ProductCard
                         key={offer.id}
