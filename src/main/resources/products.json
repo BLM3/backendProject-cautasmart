@@ -1,0 +1,62 @@
+[
+  {
+    "id": 1,
+    "name": "Laptop Gaming ASUS TUF",
+    "description": "Laptop performant pentru gaming și programare",
+    "price": 4500,
+    "currency": "RON",
+    "category": "Electronics",
+    "inStock": true,
+    "rating": 4.6,
+    "imageUrl": "https://ro.store.asus.com/media/catalog/product/_/a/_akwvnsxlsmh5ymbp.png?store=ro_RO&image-type=image",
+    "affiliateLink": "https://profitshare.ro/product/1"
+  },
+  {
+    "id": 2,
+    "name": "Căști Wireless Sony WH-1000XM5",
+    "description": "Noise cancelling, baterie 30h",
+    "price": 1400,
+    "currency": "RON",
+    "category": "Audio",
+    "inStock": true,
+    "rating": 4.8,
+    "imageUrl": "https://s13emagst.akamaized.net/products/45775/45774166/images/res_fdfd424d580cceb52a920ebac9ab675d.jpg?width=720&height=720&hash=368F4CC9BCB95E83CE57E20233F08F84",
+    "affiliateLink": "https://profitshare.ro/product/2"
+  },
+  {
+    "id": 3,
+    "name": "Mouse Logitech G502",
+    "description": "Mouse gaming cu DPI ajustabil",
+    "price": 250,
+    "currency": "RON",
+    "category": "Accessories",
+    "inStock": true,
+    "rating": 4.7,
+    "imageUrl": "https://s1.cel.ro/images/Products/mouse-gaming-logitech-g502-hero-usb.jpg",
+    "affiliateLink": "https://profitshare.ro/product/3"
+  },
+  {
+    "id": 4,
+    "name": "Monitor Samsung 27'' 144Hz",
+    "description": "Monitor ideal pentru gaming și productivitate",
+    "price": 1200,
+    "currency": "RON",
+    "category": "Monitors",
+    "inStock": false,
+    "rating": 4.5,
+    "imageUrl": "https://s1.cel.ro/images/Products/2026/04/17/Monitor-Gaming-OLED-Samsung-27-LS27HG612SUXEN-QHD-2560-x-1440-HDMI-DisplayPort-Pivot-240-Hz-0-03-ms-Negru.jpg",
+    "affiliateLink": "https://profitshare.ro/product/4"
+  },
+  {
+    "id": 5,
+    "name": "Mouse Logitech G502",
+    "description": "Mouse gaming cu DPI ajustabil",
+    "price": 250,
+    "currency": "RON",
+    "category": "Accessories",
+    "inStock": true,
+    "rating": 4.7,
+    "imageUrl": "https://s1.cel.ro/images/Products/mouse-gaming-logitech-g502-hero-usb.jpg",
+    "affiliateLink": "https://profitshare.ro/product/3"
+  }
+]
