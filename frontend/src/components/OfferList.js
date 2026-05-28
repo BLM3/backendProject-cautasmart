@@ -3,21 +3,30 @@ import axios from 'axios'; // Instalăm axios pentru cereri HTTP
 import ProductCard from './ProductCard';
 import SearchBar from './SearchBar';
 
-function OfferList({favorites, setFavorites, showFavorites}) {
+function OfferList({favorites, setFavorites, showFavorites, compareItems, setCompareItems}) {
     const [offers, setOffers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [page, setPage] = useState(0);
-    const [compareItems,setCompareItems]=useState([]);
-
-    /*const [favorites, setFavorites] = useState(()=>{
-        const saved=localStorage.getItem("favorites");
-        return saved? JSON.parse(saved):[];
-    });*/
     const [searchTerm, setSearchTerm] = useState('');
+    // Starea nouă pentru valoarea cu întârziere
+    const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
+
+    // 1. Efect pentru DEBOUNCE: Așteaptă 500ms înainte de a schimba debouncedSearchTerm
+    useEffect(() => {
+        const handler = setTimeout(() => {
+            setDebouncedSearchTerm(searchTerm);
+        }, 500);
+
+        // Curățăm timer-ul dacă utilizatorul tastează din nou înainte de expirarea celor 500ms
+        return () => {
+            clearTimeout(handler);
+        };
+    }, [searchTerm]);
     useEffect(() => {
         localStorage.setItem("favorites", JSON.stringify(favorites));
     },[favorites]);
+
     useEffect(() => {
         const fetchOffers = async () => {
             try {
@@ -25,7 +34,7 @@ function OfferList({favorites, setFavorites, showFavorites}) {
                 setError(null);
                 //const API_URL=process.env.REACT_APP_API_URL;
                 // Apelul către endpoint-ul backend-ului nostru Java
-                const response = await axios.get(`/api/offers?page=${page}&size=12&keyword=${searchTerm}`);//192.168.1.131
+                const response = await axios.get(`/api/offers?page=${page}&size=12&keyword=${debouncedSearchTerm}`);//192.168.1.131
                 setOffers(response.data);
             } catch (err) {
                 setError("Nu s-au putut încărca produsele");
@@ -35,11 +44,8 @@ function OfferList({favorites, setFavorites, showFavorites}) {
             }
         };
         fetchOffers();
-    }, [page,searchTerm]); // Re-rulează când searchTerm se schimbă
-    const displayedOffers =
-        showFavorites
-            ? favorites
-            : offers;
+    }, [page,debouncedSearchTerm]); // Re-rulează când searchTerm se schimbă
+
     return (
 
         <div className="px-4">
@@ -49,23 +55,15 @@ function OfferList({favorites, setFavorites, showFavorites}) {
                 setSearchTerm={setSearchTerm}
                 setPage={setPage}
             />
-            {loading && (
-                <p className="text-center text-xl">
-                    Loading...
-                </p>
+            {loading && (<p className="text-center text-xl mt-4">Se incarca produsele...</p>)}
+            {error &&<p className="text-red-500 text-center mt-4">{error}</p>}
+
+            {!loading && !error && offers.length === 0 && (
+                <p className="text-center text-gray-500 mt-4">Nu s-au găsit produse pentru căutarea ta.</p>
             )}
-            {error &&<p className="text-red-500">{error}</p>}
-            <div className="
-                grid
-                grid-cols-1
-                sm:grid-cols-2
-                md:grid-cols-3
-                lg:grid-cols-4
-                gap-6
-            ">
 
-                {displayedOffers.map((offer) => (
-
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                {offers.map((offer) => (
                     <ProductCard
                         key={offer.id}
                         offer={offer}
@@ -74,24 +72,15 @@ function OfferList({favorites, setFavorites, showFavorites}) {
                         compareItems={compareItems}
                         setCompareItems={setCompareItems}
                     />
-
                 ))}
-
             </div>
-            <div className="flex
-                justify-center
-                items-center
-                gap-4
-                mt-8
-                mb-6">
+            {/* Paginare */}
 
+            <div className="flex justify-center items-center gap-4 mt-8 mb-6">
                 <button
+                    disabled={page === 0}
                     onClick={() => setPage(prev => Math.max(prev - 1, 0))}
-                    className="px-5
-                        py-3
-                        rounded-xl
-                        bg-gray-200"
-                >
+                    className={`px-5 py-3 rounded-xl font-medium ${page === 0 ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-gray-200 hover:bg-gray-300'}`}>
                     Previous
                 </button>
                 <span className="font-semibold">
@@ -99,12 +88,7 @@ function OfferList({favorites, setFavorites, showFavorites}) {
                 </span>
                 <button
                     onClick={() => setPage(prev => prev + 1)}
-                    className="px-5
-                        py-3
-                        rounded-xl
-                        bg-blue-500
-                        text-white"
-                >
+                    className="px-5 py-3 rounded-xl bg-blue-500 hover:bg-blue-600 text-white font-medium">
                     Next
                 </button>
 

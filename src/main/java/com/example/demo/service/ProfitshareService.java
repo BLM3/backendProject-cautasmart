@@ -1,62 +1,61 @@
 package com.example.demo.service;
+
 import com.example.demo.dto.OfferDTO;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.ParameterizedTypeReference;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.RequestEntity;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
-import org.springframework.web.util.UriComponentsBuilder;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.File;
-import java.net.URI;
+import java.io.IOException;
+import java.text.Normalizer;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.io.InputStream;
-import java.util.Arrays;
-import java.util.Map;
-import java.io.IOException;
-import java.util.*;
-import java.util.stream.Collectors;
+import java.util.regex.Pattern;
 @Service
 
 public class ProfitshareService {
 
-    private List<OfferDTO> offers;
+    private List<OfferDTO> offers=new ArrayList<>();
 
     @Value("${profitshare.data.path}")
     //@Value("${profitshare.data.path}")
     private String dataPath;
 
     @PostConstruct
-    public void init() throws IOException{
-        ObjectMapper mapper = new ObjectMapper();
-        OfferDTO[] offersArray = mapper.readValue(
-                new File(dataPath),
-                OfferDTO[].class
-        );
-        offers=Arrays.asList(offersArray);
+    public void init() {
+        try{
+            ObjectMapper mapper = new ObjectMapper();
+            OfferDTO[] offersArray = mapper.readValue(new File(dataPath), OfferDTO[].class);
+            // Folosim ArrayList pentru a evita problemele listelor imutabile din Arrays.asList
+            this.offers = new ArrayList<>(List.of(offersArray));
+        }catch(IOException e){
+            // Este important să prinzi eroarea aici ca să nu îți crape întreaga aplicație la pornire dacă fișierul lipsește
+            System.err.println("Eroare la încărcarea fișierului JSON de Profitshare: " + e.getMessage());
+            this.offers = new ArrayList<>();
+        }
     }
 
-    public List<OfferDTO> getOffers(
-            String keyword,
-            int page,
-            int size)
-    {
+    public List<OfferDTO> getOffers(String keyword,int page,int size) {
         List<OfferDTO> filtered=offers;
 
-        // filtrare după keyword
+        // Filtrare după keyword (verificăm atât numele cât și descrierea pentru o căutare mai bună)
         if (keyword != null && !keyword.isBlank()) {
+            // 1. Curățăm keyword-ul introdus de utilizator
+            String lowerKeyword = removeDiacritics(keyword.toLowerCase());
 
-            filtered=offers.stream()
-                    .filter(o->
-                            o.getName()
-                                    .toLowerCase()
-                                    .contains(keyword.toLowerCase()))
+            filtered = offers.stream()
+                    .filter(o -> {
+                        // 2. Curățăm numele produsului curent (dacă nu e null)
+                        String cleanName = o.name() != null ? removeDiacritics(o.name().toLowerCase()) : "";
+
+                        // 3. Curățăm descrierea produsului curent (dacă nu e null)
+                        String cleanDescription = o.description() != null ? removeDiacritics(o.description().toLowerCase()) : "";
+
+                        // 4. Facem comparația pe textele „curățate” de diacritice
+                        return cleanName.contains(lowerKeyword) || cleanDescription.contains(lowerKeyword);
+                    })
                     .toList();
         }
 
@@ -70,5 +69,26 @@ public class ProfitshareService {
         int end = Math.min(start + size, filtered.size());
 
         return filtered.subList(start, end);
+    }
+    /**
+     * Metodă Helper care elimină diacriticele dintr-un text.
+     * Transformă "cămașă" în "camasa", "încălțăminte" în "incaltaminte", etc.
+     */
+    private String removeDiacritics(String text) {
+        if (text == null) {
+            return "";
+        }
+        // Pasul 1: Normalizăm textul în forma descompusă (NFD). De exemplu, 'ă' devine 'a' + un accent separat.
+        String normalized = Normalizer.normalize(text, Normalizer.Form.NFD);
+
+        // Pasul 2: Folosim un Regex pentru a șterge toate semnele diacritice (caracterele non-spacing mark)
+        Pattern pattern = Pattern.compile("\\p{InCombiningDiacriticalMarks}+");
+        String result = pattern.matcher(normalized).replaceAll("");
+
+        // Pasul 3: Corecție specială pentru ș-ul și ț-ul românesc vechi/nou (care uneori nu se curăță prin NFD standard)
+        return result.replace("ș", "s")
+                .replace("ț", "t")
+                .replace("Ș", "s")
+                .replace("Ț", "t");
     }
 }

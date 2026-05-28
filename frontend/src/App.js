@@ -1,9 +1,10 @@
-// import logo from './logo.svg';
 import './App.css';
 import React, {useState} from 'react';
 import Navbar from './components/Navbar';
 import OfferList from './components/OfferList';
+import Favorites from './components/Favorites';
 import CompareBar from './components/CompareBar';
+
 function App() {
     const [compareItems,setCompareItems]=useState([]);
     const [favorites, setFavorites] = useState(() => {
@@ -14,18 +15,26 @@ function App() {
     const [showFavorites, setShowFavorites] = useState(false);
 
     return (
-        <div className="App min-h-screen bg-gray-100">
-
+        <div className="App min-h-screen bg-gray-100 pb-24">
             <Navbar setShowFavorites={setShowFavorites}/>
-            <OfferList
-                compareItems={compareItems}
-                setCompareItems={setCompareItems}
-                favorites={favorites}
-                setFavorites={setFavorites}
-                showFavorites={showFavorites}
-            />
+            {showFavorites ? (
+                <Favorites
+                    favorites={favorites}
+                    setFavorites={setFavorites}
+                    compareItems={compareItems}
+                    setCompareItems={setCompareItems}
+                />
+            ) : (
+                <OfferList
+                    compareItems={compareItems}
+                    setCompareItems={setCompareItems}
+                    favorites={favorites}
+                    setFavorites={setFavorites}
+                />
+            )}
             <CompareBar
                 compareItems={compareItems}
+                setCompareItems={setCompareItems}
             />
         </div>
       );
