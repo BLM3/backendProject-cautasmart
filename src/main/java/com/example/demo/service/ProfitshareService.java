@@ -11,6 +11,7 @@ import java.io.IOException;
 import java.text.Normalizer;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.regex.Pattern;
 @Service
@@ -37,7 +38,7 @@ public class ProfitshareService {
         }
     }
 
-    public List<OfferDTO> getOffers(String keyword,int page,int size) {
+    public List<OfferDTO> getOffers(String keyword, String category, String sortBy, int page,int size) {
         List<OfferDTO> filtered=offers;
 
         // Filtrare după keyword (verificăm atât numele cât și descrierea pentru o căutare mai bună)
@@ -57,6 +58,34 @@ public class ProfitshareService {
                         return cleanName.contains(lowerKeyword) || cleanDescription.contains(lowerKeyword);
                     })
                     .toList();
+        }
+        //filtrare dupa categorie
+        if (category != null && !category.isBlank() && !category.equalsIgnoreCase("all")) {
+            filtered = filtered.stream()
+                    .filter(o -> o.category() != null && o.category().equalsIgnoreCase(category))
+                    .toList();
+        }
+
+        // sortare dinamica
+        if (sortBy != null && !sortBy.isBlank()) {
+            // Creăm o listă mutabilă din stream pentru a o putea sorta
+            List<OfferDTO> mutableList = new ArrayList<>(filtered);
+
+            switch (sortBy) {
+                case "price_asc":
+                    mutableList.sort(Comparator.comparingDouble(OfferDTO::price));
+                    break;
+                case "price_desc":
+                    mutableList.sort(Comparator.comparingDouble(OfferDTO::price).reversed());
+                    break;
+                case "rating_desc":
+                    mutableList.sort(Comparator.comparingDouble(OfferDTO::rating).reversed());
+                    break;
+                default:
+                    // Rămâne sortarea implicită din fișier
+                    break;
+            }
+            filtered = mutableList;
         }
 
         // calcul paginare

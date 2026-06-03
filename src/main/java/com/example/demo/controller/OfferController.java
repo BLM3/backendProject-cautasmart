@@ -23,15 +23,12 @@ public class OfferController {
         this.profitshareService = profitshareService;
     }
     @GetMapping
-    public List<OfferDTO> getAllOffers(@RequestParam(required = false) String keyword,
+    public List<OfferDTO> getAllOffers(@RequestParam(required = false) String keyword,@RequestParam(required = false) String category,
+                                       @RequestParam(required = false) String sortBy,
                                        @RequestParam(defaultValue="0") int page,
                                        @RequestParam(defaultValue="12") int size
     )  throws IOException {
-        return profitshareService.getOffers(
-                keyword,
-                page,
-                size
-        );
+        return profitshareService.getOffers(keyword, category, sortBy, page, size);
     }
 //    @GetMapping("/products")
 //    public String getProducts() throws IOException {
