@@ -1,4 +1,6 @@
+import React from 'react';
 import toast from 'react-hot-toast';
+import { Heart, BarChart3 } from 'lucide-react';
 function ProductCard({ offer,favorites=[],setFavorites,compareItems=[],setCompareItems,addToRecentlyViewed }) {
     const isFavorite=favorites.some(item=>item.id===offer.id);
     const isCompared=compareItems.some(item=>item.id===offer.id);
@@ -24,12 +26,12 @@ function ProductCard({ offer,favorites=[],setFavorites,compareItems=[],setCompar
     }
     return (
 
-            <div className="bg-white dark:bg-gray-800 rounded-xl sm:rounded-2xl shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden flex flex-col relative border border-gray-100 dark:border-gray-700/50">
-                <div className="p-2 sm:p-3 flex justify-between items-center gap-2 bg-gray-50/50 dark:bg-gray-900/20 border-b border-gray-100 dark:border-gray-700/30">
+        <div className="bg-white dark:bg-gray-800 rounded-xl sm:rounded-2xl shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden flex flex-col relative border border-gray-100 dark:border-gray-700/50">
+            <div className="p-2 sm:p-4 flex justify-between items-center gap-2 bg-gray-50/50 dark:bg-gray-900/20 border-b border-gray-100 dark:border-gray-700/30">
                 {/* BADGE TOP RECOMANDAT*/}
                 <div>
                     {offer.rating >= 4.5 ? (
-                        <span className="inline-block bg-amber-500 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-md shadow-sm uppercase tracking-wider">
+                        <span className="inline-block bg-amber-500 text-white text-[13px] font-extrabold px-2 py-0.5 rounded-md shadow-sm uppercase tracking-wider">
                                 ⭐ Top
                             </span>
                     ) : (<div className="w-10 h-4"></div> )
@@ -37,24 +39,31 @@ function ProductCard({ offer,favorites=[],setFavorites,compareItems=[],setCompar
                 </div>
 
                 {/*favorites*/}
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-2 sm:gap-3">
                     <button
                         onClick={toggleFavorite}
-                        className={`p-1.5 rounded-lg transition-all border ${
+                        className={`flex h-8 w-8 sm:h-11 sm:w-11 items-center justify-center rounded-xl border transition-all duration-200 hover:scale-105 active:scale-95 ${
                             isFavorite
                                 ? 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-900/50 text-red-500'
-                                : 'bg-white dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-400 hover:text-red-500'
+                                : 'bg-white dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-400 hover:text-red-500 dark:hover:text-red-400'
                         }`}
-                    >{isFavorite ? "❤️" : "🤍"}
+                        title="Adaugă la favorite"
+                    >
+                        <Heart
+                            size={16}
+                            className={`sm:size-6 transition-transform duration-200 ${isFavorite ? 'fill-current scale-105' : ''}`}
+                        />
                     </button>
                     <button
                         onClick={toggleCompare}
-                        className={`px-2 py-1 rounded-lg text-[11px] font-bold transition-all ${
+                        className={`flex h-8 px-2 sm:h-11 sm:px-4 items-center justify-center gap-1.5 rounded-xl text-[11px] sm:text-sm font-bold border transition-all duration-200 hover:scale-105 active:scale-95 ${
                             isCompared
-                                ? 'bg-blue-600 text-white shadow-sm'
-                                : 'bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200'
+                                ? 'bg-blue-600 border-blue-600 text-white shadow-sm'
+                                : 'bg-gray-200 border-transparent hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200'
                         }`}
-                    >{isCompared ? "✓ Selectat" : "Compară"}
+                    >
+                        <BarChart3 size={14} className="sm:size-5" />
+                        <span className="hidden xs:inline">{isCompared ? "Selectat" : "Compară"}</span>
                     </button>
                 </div>
             </div>
@@ -77,16 +86,33 @@ function ProductCard({ offer,favorites=[],setFavorites,compareItems=[],setCompar
                     {offer.description}
                 </p>
                 {/* PRICE + RATING */}
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-1 mt-2 sm:mt-4">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-1 mt-2 sm:mt-4 w-full">
 
-                    <span className="text-sm sm:text-xl font-extrabold text-green-600 dark:text-green-400">
-                        {offer.price} {offer.currency}
-                    </span>
+                    <div className="flex flex-col">
+                        {/* Prețul vechi tăiat (apare doar dacă există o reducere reală) */}
+                        {offer.oldPrice && offer.oldPrice > offer.price && (
+                            <span className="text-xs sm:text-sm text-gray-400 dark:text-gray-500 line-through font-medium">
+                                {offer.oldPrice} {offer.currency}
+                            </span>
+                        )}
 
-                    <span className="text-yellow-500 font-bold bg-yellow-50 dark:bg-yellow-950/30 px-1.5 py-0.5 rounded-lg text-[10px] sm:text-sm whitespace-nowrap">
+                        {/* Prețul actual */}
+                        <span className="text-sm sm:text-xl font-extrabold text-green-600 dark:text-green-400 flex items-center gap-2">
+                            {offer.price} {offer.currency}
+
+                            {/* Badge procent reducere calculated dinamic */}
+                            {offer.oldPrice && offer.oldPrice > offer.price && (
+                                <span className="text-[10px] sm:text-xs font-bold bg-red-100 text-red-600 dark:bg-red-950/40 dark:text-red-400 px-1.5 py-0.5 rounded-md animate-pulse">
+                                    -{Math.round(((offer.oldPrice - offer.price) / offer.oldPrice) * 100)}%
+                                </span>
+                                            )}
+                         </span>
+                    </div>
+
+                    {/* Rating-ul rămâne la locul lui */}
+                    <span className="text-yellow-500 font-bold bg-yellow-50 dark:bg-yellow-950/30 px-1.5 py-0.5 rounded-lg text-[10px] sm:text-sm whitespace-nowrap self-end sm:self-center">
                         ⭐ {offer.rating}
                     </span>
-
                 </div>
                 {/* CATEGORY */}
                 <p className="text-[10px] uppercase tracking-wider text-gray-400 mt-2 font-semibold">

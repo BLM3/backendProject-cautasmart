@@ -1,5 +1,6 @@
 import React, {useState,useEffect} from 'react';
-function Navbar({setShowFavorites} ) {
+import { Heart,Home } from 'lucide-react';
+function Navbar({favorites = [],setShowFavorites} ) {
     // Starea pentru Dark Mode (verifică și preferința salvată în localStorage)
     const [darkMode, setDarkMode] = useState(() => {
         return localStorage.getItem("theme") === "dark";
@@ -24,19 +25,34 @@ function Navbar({setShowFavorites} ) {
 
             <div className="flex items-center gap-3 sm:gap-6">
                 <div className="flex items-center space-x-2 sm:space-x-4 font-semibold text-xs sm:text-sm text-gray-600 dark:text-gray-300">
-                    <button className="p-2 hover:text-blue-600 dark:hover:text-blue-400 transition"
-                            onClick={() =>setShowFavorites(false)}>
-                        Home
+                    <button className="relative flex h-9 px-2 sm:h-11 sm:px-3 items-center justify-center gap-1.5 rounded-xl border border-gray-200 bg-white text-gray-500 transition-all duration-200 hover:scale-105 hover:text-blue-500 hover:border-blue-200 active:scale-95 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:border-blue-950/40"
+                            onClick={() =>setShowFavorites(false)}title="Acasă">
+                        <Home size={16} className="sm:size-5" />
+                        <span className="hidden sm:inline">Home</span>
                     </button>
 
-                    <button className="p-2 hover:text-blue-600 dark:hover:text-blue-400 transition whitespace-nowrap"
-                            onClick={() => setShowFavorites(prev => !prev)}>❤️ <span className="hidden sm:inline">
-                        Favorites</span>
+                    <button
+                        className="relative flex h-9 px-2 sm:h-11 sm:px-3 items-center justify-center gap-1.5 rounded-xl border border-gray-200 bg-white text-gray-500 transition-all duration-200 hover:scale-105 hover:text-blue-500 hover:border-blue-200 active:scale-95 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:border-blue-950/40"
+                        onClick={() => setShowFavorites(prev => !prev)}
+                        title="Vezi Favorite" >
+                        <Heart
+                            size={16}
+                            className={`sm:size-5 transition-all duration-300 
+                                    ${favorites.length > 0 ? 'text-blue-500 fill-current' : ''}`}
+                        />
+                        <span className="hidden sm:inline">Favorites</span>
+
+                        {/* Badge-ul numeric roșu (apare doar dacă ai produse salvate) */}
+                        {favorites.length > 0 && (
+                            <span className="absolute -top-1 -right-1 flex h-4 w-4 sm:h-5 sm:w-5 items-center justify-center rounded-full bg-blue-500 text-[9px] sm:text-[10px] font-bold text-white shadow-sm ring-2 ring-white dark:ring-gray-800">
+                                    {favorites.length}
+                                </span>
+                        )}
                     </button>
 
-                    <button className="p-2 hover:text-blue-600 dark:hover:text-blue-400 transition">
-                        🛒 <span className="hidden sm:inline">Cart</span>
-                    </button>
+                    {/*<button className="p-2 hover:text-blue-600 dark:hover:text-blue-400 transition">*/}
+                    {/*    🛒 <span className="hidden sm:inline">Cart</span>*/}
+                    {/*</button>*/}
                 </div>
                <span className="h-5 w-px bg-gray-200 dark:bg-gray-700"></span>
                <button

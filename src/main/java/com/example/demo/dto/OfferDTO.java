@@ -4,6 +4,7 @@ public record OfferDTO(
      String name,
      String description,
      double price,
+     double oldPrice,
      String currency,
      String category,
      boolean inStock,
