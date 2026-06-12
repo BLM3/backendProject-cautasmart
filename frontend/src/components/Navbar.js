@@ -38,7 +38,7 @@ function Navbar({favorites = [],setShowFavorites} ) {
                         <Heart
                             size={16}
                             className={`sm:size-5 transition-all duration-300 
-                                    ${favorites.length > 0 ? 'text-blue-500 fill-current' : ''}`}
+                                    ${favorites.length > 0 ? 'text-red-500 fill-current' : ''}`}
                         />
                         <span className="hidden sm:inline">Favorites</span>
 

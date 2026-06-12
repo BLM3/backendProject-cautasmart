@@ -30,6 +30,15 @@ public class OfferController {
     )  throws IOException {
         return profitshareService.getOffers(keyword, category, sortBy, page, size);
     }
+    @GetMapping("/autocomplete")
+    public List<OfferDTO> getAutocompleteSuggestions(@RequestParam String query) {
+        if (query == null || query.isBlank() || query.length() < 2) {
+            return java.util.Collections.emptyList();
+        }
+
+        // Preluăm doar primele 5 rezultate potrivite direct din service
+        return profitshareService.getOffers(query, null, null, 0, 5);
+    }
 //    @GetMapping("/products")
 //    public String getProducts() throws IOException {
 //        return Files.readString(Path.of("./products.json"));

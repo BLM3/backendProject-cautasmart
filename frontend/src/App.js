@@ -6,6 +6,7 @@ import OfferList from './components/OfferList';
 import Favorites from './components/Favorites';
 import CompareBar from './components/CompareBar';
 
+
 function App() {
     const [compareItems,setCompareItems]=useState([]);
     const [favorites, setFavorites] = useState(() => {
@@ -17,7 +18,7 @@ function App() {
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors duration-300">
             <Toaster position="top-right" reverseOrder={false} />
-            <Navbar setShowFavorites={setShowFavorites}/>
+            <Navbar setShowFavorites={setShowFavorites} favorites={favorites}/>
                 {showFavorites ? (
                     <Favorites
                         favorites={favorites}
