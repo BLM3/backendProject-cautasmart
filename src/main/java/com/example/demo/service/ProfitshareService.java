@@ -78,8 +78,26 @@ public class ProfitshareService {
     }
 
     public List<OfferDTO> getOffers(String keyword, String category, String sortBy, int page,int size) {
-        List<OfferDTO> filtered=offers;
+        List<Product> allProducts = productRepository.findAll();
 
+        // Convertim obiectele Product din baza de date în OfferDTO-uri pentru a păstra logica ta intactă
+        List<OfferDTO> dbOffers = allProducts.stream()
+                .map(p -> new OfferDTO(
+                        p.getProfitshareId(),
+                        p.getName(),
+                        p.getDescription(),
+                        p.getPrice(),
+                        p.getOldPrice(),
+                        p.getCurrency(),
+                        p.getCategory(),
+                        p.isInStock(),
+                        p.getRating(),
+                        p.getImageUrl(),
+                        p.getAffiliateLink()
+                ))
+                .toList();
+
+        List<OfferDTO> filtered = dbOffers;
         // Filtrare după keyword (verificăm atât numele cât și descrierea pentru o căutare mai bună)
         if (keyword != null && !keyword.isBlank()) {
             // 1. Curățăm keyword-ul introdus de utilizator
