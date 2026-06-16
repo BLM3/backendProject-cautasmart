@@ -1,15 +1,21 @@
 package com.example.demo.service;
 
 import com.example.demo.dto.OfferDTO;
+import com.example.demo.model.Product;
+import com.example.demo.repository.ProductRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.PostConstruct;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.text.Normalizer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
@@ -20,20 +26,53 @@ public class ProfitshareService {
 
     private List<OfferDTO> offers=new ArrayList<>();
 
+    @Autowired
+    private ProductRepository productRepository;
+//    @Value("${profitshare.data.path}")
     @Value("${profitshare.data.path}")
-    //@Value("${profitshare.data.path}")
     private String dataPath;
 
     @PostConstruct
     public void init() {
-        try{
+        try (InputStream inputStream = new ClassPathResource(dataPath).getInputStream()) {
             ObjectMapper mapper = new ObjectMapper();
-            OfferDTO[] offersArray = mapper.readValue(new File(dataPath), OfferDTO[].class);
-            // Folosim ArrayList pentru a evita problemele listelor imutabile din Arrays.asList
-            this.offers = new ArrayList<>(List.of(offersArray));
-        }catch(IOException e){
-            // Este important să prinzi eroarea aici ca să nu îți crape întreaga aplicație la pornire dacă fișierul lipsește
-            System.err.println("Eroare la încărcarea fișierului JSON de Profitshare: " + e.getMessage());
+            OfferDTO[] offersArray = mapper.readValue(inputStream, OfferDTO[].class);
+            this.offers = new ArrayList<>(Arrays.asList(offersArray));
+            System.out.println("Succes: S-au încărcat " + this.offers.size() + " produse din JSON-ul intern.");
+
+            // Verificăm dacă baza de date este goală
+            if (productRepository.count() == 0) {
+                System.out.println("Baza de date Neon este goală. Se inițiază salvarea produselor...");
+
+                List<Product> productsToSave = new ArrayList<>();
+
+                // Parcurgem matricea de DTO-uri pas cu pas
+                for (OfferDTO dto : offersArray) {
+                    Product p = new Product(
+                            dto.id(),
+                            dto.name(),
+                            dto.description(),
+                            dto.price(),
+                            dto.oldPrice(),
+                            dto.currency(),
+                            dto.category(),
+                            dto.inStock(),
+                            dto.rating(),
+                            dto.imageUrl(),
+                            dto.affiliateLink()
+                    );
+                    productsToSave.add(p);
+                }
+
+                // Salvăm totul dintr-o singură mișcare în cloud
+                productRepository.saveAll(productsToSave);
+                System.out.println("🚀 Succes! Toate cele " + productsToSave.size() + " produse au fost salvate în Neon!");
+            } else {
+                System.out.println("Baza de date Neon conține deja produse. Skip seeder.");
+            }
+
+        } catch (IOException e) {
+            System.err.println("Eroare la procesarea fișierului JSON sau salvarea în DB: " + e.getMessage());
             this.offers = new ArrayList<>();
         }
     }
