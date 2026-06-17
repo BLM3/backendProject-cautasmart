@@ -10,10 +10,18 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 
-import java.io.File;
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
+import java.text.Normalizer;
+import java.time.Instant;
+import java.util.*;
 import java.io.IOException;
 import java.io.InputStream;
-import java.text.Normalizer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -29,51 +37,113 @@ public class ProfitshareService {
     @Autowired
     private ProductRepository productRepository;
 //    @Value("${profitshare.data.path}")
-    @Value("${profitshare.data.path}")
+    @Value("${profitshare.api.user}")
+    private String apiUser;
+
+    @Value("${profitshare.api.key}")
+    private String apiKey;
+    //@Value("${profitshare.data.path}")
     private String dataPath;
+
+    private final HttpClient httpClient = HttpClient.newHttpClient();
 
     @PostConstruct
     public void init() {
-        try (InputStream inputStream = new ClassPathResource(dataPath).getInputStream()) {
-            ObjectMapper mapper = new ObjectMapper();
-            OfferDTO[] offersArray = mapper.readValue(inputStream, OfferDTO[].class);
-            this.offers = new ArrayList<>(Arrays.asList(offersArray));
-            System.out.println("Succes: S-au încărcat " + this.offers.size() + " produse din JSON-ul intern.");
+        System.out.println("Profitshare Service inițializat cu API User: " + apiUser);
+//        try (InputStream inputStream = new ClassPathResource(dataPath).getInputStream()) {
+//            ObjectMapper mapper = new ObjectMapper();
+//            OfferDTO[] offersArray = mapper.readValue(inputStream, OfferDTO[].class);
+//            this.offers = new ArrayList<>(Arrays.asList(offersArray));
+//            System.out.println("Succes: S-au încărcat " + this.offers.size() + " produse din JSON-ul intern.");
+//
+//            // Verificăm dacă baza de date este goală
+//            if (productRepository.count() == 0) {
+//                System.out.println("Baza de date Neon este goală. Se inițiază salvarea produselor...");
+//
+//                List<Product> productsToSave = new ArrayList<>();
+//
+//                // Parcurgem matricea de DTO-uri pas cu pas
+//                for (OfferDTO dto : offersArray) {
+//                    Product p = new Product(
+//                            dto.id(),
+//                            dto.name(),
+//                            dto.description(),
+//                            dto.price(),
+//                            dto.oldPrice(),
+//                            dto.currency(),
+//                            dto.category(),
+//                            dto.inStock(),
+//                            dto.rating(),
+//                            dto.imageUrl(),
+//                            dto.affiliateLink()
+//                    );
+//                    productsToSave.add(p);
+//                }
+//
+//                // Salvăm totul dintr-o singură mișcare în cloud
+//                productRepository.saveAll(productsToSave);
+//                System.out.println("🚀 Succes! Toate cele " + productsToSave.size() + " produse au fost salvate în Neon!");
+//            } else {
+//                System.out.println("Baza de date Neon conține deja produse. Skip seeder.");
+//            }
+//
+//        } catch (IOException e) {
+//            System.err.println("Eroare la procesarea fișierului JSON sau salvarea în DB: " + e.getMessage());
+//            this.offers = new ArrayList<>();
+//        }
+    }
+    /**
+     * Generează header-ul de autentificare securizat X-Profitshare-Auth cerut de rețea.
+     */
+    private String genereazaHeaderAutentificare(String metodaHttp, String urlPath, String timestamp) {
+        try {
+            String textDeSemnat = metodaHttp.toUpperCase() + urlPath + "/" + timestamp;
 
-            // Verificăm dacă baza de date este goală
-            if (productRepository.count() == 0) {
-                System.out.println("Baza de date Neon este goală. Se inițiază salvarea produselor...");
+            Mac sha256Hmac = Mac.getInstance("HmacSHA256");
+            SecretKeySpec secretKey = new SecretKeySpec(apiKey.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
+            sha256Hmac.init(secretKey);
 
-                List<Product> productsToSave = new ArrayList<>();
+            byte[] hashBytes = sha256Hmac.doFinal(textDeSemnat.getBytes(StandardCharsets.UTF_8));
 
-                // Parcurgem matricea de DTO-uri pas cu pas
-                for (OfferDTO dto : offersArray) {
-                    Product p = new Product(
-                            dto.id(),
-                            dto.name(),
-                            dto.description(),
-                            dto.price(),
-                            dto.oldPrice(),
-                            dto.currency(),
-                            dto.category(),
-                            dto.inStock(),
-                            dto.rating(),
-                            dto.imageUrl(),
-                            dto.affiliateLink()
-                    );
-                    productsToSave.add(p);
-                }
-
-                // Salvăm totul dintr-o singură mișcare în cloud
-                productRepository.saveAll(productsToSave);
-                System.out.println("🚀 Succes! Toate cele " + productsToSave.size() + " produse au fost salvate în Neon!");
-            } else {
-                System.out.println("Baza de date Neon conține deja produse. Skip seeder.");
+            StringBuilder hexString = new StringBuilder();
+            for (byte b : hashBytes) {
+                String hex = Integer.toHexString(0xff & b);
+                if (hex.length() == 1) hexString.append('0');
+                hexString.append(hex);
             }
 
-        } catch (IOException e) {
-            System.err.println("Eroare la procesarea fișierului JSON sau salvarea în DB: " + e.getMessage());
-            this.offers = new ArrayList<>();
+            return hexString.toString();
+        } catch (Exception e) {
+            System.err.println("Eroare la generarea semnăturii API: " + e.getMessage());
+            return "";
+        }
+    }
+    /**
+     * Metodă model pentru a trage produsele live prin API-ul lor în viitor
+     */
+    public void sincronizeazaProduseDinProfitshare() {
+        try {
+            String timestamp = String.valueOf(Instant.now().getEpochSecond());
+            String apiPath = "/affiliate-modules/products"; // Path-ul din documentația lor de API
+            String urlCompleta = "https://api.profitshare.ro" + apiPath;
+
+            String semnatura = genereazaHeaderAutentificare("GET", apiPath, timestamp);
+
+            HttpRequest cerere = HttpRequest.newBuilder()
+                    .uri(URI.create(urlCompleta))
+                    .GET()
+                    .header("X-Profitshare-Username", apiUser)
+                    .header("X-Profitshare-Date", timestamp)
+                    .header("X-Profitshare-Auth", semnatura)
+                    .header("Accept", "application/json")
+                    .build();
+
+            System.out.println("Se trimite cererea către API Profitshare...");
+            // HttpResponse<String> raspuns = httpClient.send(cerere, HttpResponse.BodyHandlers.ofString());
+            // Aici vei parsa răspunsul JSON primit de la ei pentru a popula tabela `products` din Neon.
+
+        } catch (Exception e) {
+            System.err.println("Eroare la conexiunea cu API Profitshare: " + e.getMessage());
         }
     }
 
