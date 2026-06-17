@@ -3,6 +3,7 @@ package com.example.demo.service;
 import com.example.demo.dto.OfferDTO;
 import com.example.demo.model.Product;
 import com.example.demo.repository.ProductRepository;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,7 +13,12 @@ import org.springframework.stereotype.Service;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
 import java.net.URI;
+import java.net.URL;
+import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
@@ -32,8 +38,6 @@ import java.util.regex.Pattern;
 
 public class ProfitshareService {
 
-    private List<OfferDTO> offers=new ArrayList<>();
-
     @Autowired
     private ProductRepository productRepository;
 //    @Value("${profitshare.data.path}")
@@ -43,54 +47,14 @@ public class ProfitshareService {
     @Value("${profitshare.api.key}")
     private String apiKey;
     //@Value("${profitshare.data.path}")
-    private String dataPath;
 
     private final HttpClient httpClient = HttpClient.newHttpClient();
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     @PostConstruct
     public void init() {
         System.out.println("Profitshare Service inițializat cu API User: " + apiUser);
-//        try (InputStream inputStream = new ClassPathResource(dataPath).getInputStream()) {
-//            ObjectMapper mapper = new ObjectMapper();
-//            OfferDTO[] offersArray = mapper.readValue(inputStream, OfferDTO[].class);
-//            this.offers = new ArrayList<>(Arrays.asList(offersArray));
-//            System.out.println("Succes: S-au încărcat " + this.offers.size() + " produse din JSON-ul intern.");
 //
-//            // Verificăm dacă baza de date este goală
-//            if (productRepository.count() == 0) {
-//                System.out.println("Baza de date Neon este goală. Se inițiază salvarea produselor...");
-//
-//                List<Product> productsToSave = new ArrayList<>();
-//
-//                // Parcurgem matricea de DTO-uri pas cu pas
-//                for (OfferDTO dto : offersArray) {
-//                    Product p = new Product(
-//                            dto.id(),
-//                            dto.name(),
-//                            dto.description(),
-//                            dto.price(),
-//                            dto.oldPrice(),
-//                            dto.currency(),
-//                            dto.category(),
-//                            dto.inStock(),
-//                            dto.rating(),
-//                            dto.imageUrl(),
-//                            dto.affiliateLink()
-//                    );
-//                    productsToSave.add(p);
-//                }
-//
-//                // Salvăm totul dintr-o singură mișcare în cloud
-//                productRepository.saveAll(productsToSave);
-//                System.out.println("🚀 Succes! Toate cele " + productsToSave.size() + " produse au fost salvate în Neon!");
-//            } else {
-//                System.out.println("Baza de date Neon conține deja produse. Skip seeder.");
-//            }
-//
-//        } catch (IOException e) {
-//            System.err.println("Eroare la procesarea fișierului JSON sau salvarea în DB: " + e.getMessage());
-//            this.offers = new ArrayList<>();
-//        }
     }
     /**
      * Generează header-ul de autentificare securizat X-Profitshare-Auth cerut de rețea.
@@ -121,30 +85,72 @@ public class ProfitshareService {
     /**
      * Metodă model pentru a trage produsele live prin API-ul lor în viitor
      */
-    public void sincronizeazaProduseDinProfitshare() {
+    public int sincronizeazaProduseDinProfitshare(int limit) {
+        int produseSalvate = 0;
         try {
-            String timestamp = String.valueOf(Instant.now().getEpochSecond());
-            String apiPath = "/affiliate-modules/products"; // Path-ul din documentația lor de API
-            String urlCompleta = "https://api.profitshare.ro" + apiPath;
+            System.out.println("🚀 [Simulare API] Se generează " + limit + " produse de la eMAG din categoria: telefoane");
 
-            String semnatura = genereazaHeaderAutentificare("GET", apiPath, timestamp);
+            // Liste de date reale pentru a simula un feed eMAG autentic
+            String[] branduri = {"Apple iPhone 15", "Samsung Galaxy S24", "Apple iPhone 14", "Samsung Galaxy A55", "Google Pixel 8"};
+            String[] stocari = {"128GB", "256GB", "512GB"};
+            String[] culori = {"Black", "White", "Blue", "Titanium Gray"};
 
-            HttpRequest cerere = HttpRequest.newBuilder()
-                    .uri(URI.create(urlCompleta))
-                    .GET()
-                    .header("X-Profitshare-Username", apiUser)
-                    .header("X-Profitshare-Date", timestamp)
-                    .header("X-Profitshare-Auth", semnatura)
-                    .header("Accept", "application/json")
-                    .build();
+            String[] imaginiEmag = {
+                    "https://s13emagst.akamaized.net/products/60907/60906353/images/res_5bd11df779ff14bd100c5bc20c5b736b.jpg", // iPhone 15
+                    "https://s13emagst.akamaized.net/products/64511/64510452/images/res_1f114c000ef854ca63ba65da98263da3.jpg", // S24
+                    "https://s13emagst.akamaized.net/products/48737/48736342/images/res_6cd75f63d0859a850787e9f3b5bc20c5.jpg"  // iPhone 14
+            };
 
-            System.out.println("Se trimite cererea către API Profitshare...");
-            // HttpResponse<String> raspuns = httpClient.send(cerere, HttpResponse.BodyHandlers.ofString());
-            // Aici vei parsa răspunsul JSON primit de la ei pentru a popula tabela `products` din Neon.
+            Random random = new Random();
+
+            for (int i = 1; i <= limit; i++) {
+                Product product = new Product();
+
+                // Generăm un ID unic Profitshare (ex: 5001, 5002...)
+                int mockProfitshareId = 5000 + i;
+                product.setProfitshareId(mockProfitshareId);
+
+                // Construim un nume de produs realist
+                String numeProdus = branduri[random.nextInt(branduri.length)] + ", " +
+                        stocari[random.nextInt(stocari.length)] + ", " +
+                        culori[random.nextInt(culori.length)];
+                product.setName(numeProdus);
+
+                product.setDescription("Ecran de ultimă generație, autonomie sporită a bateriei și sistem de camere foto profesionale. Produs vândut și livrat de eMAG.");
+
+                // Generăm prețuri realiste
+                double pretCurent = 2000 + (random.nextDouble() * 4000); // Între 2000 și 6000 RON
+                double pretVechi = pretCurent + 300 + random.nextInt(500);
+
+                // Rotunjim la 2 zecimale
+                product.setPrice(Math.round(pretCurent * 100.0) / 100.0);
+                product.setOldPrice(Math.round(pretVechi * 100.0) / 100.0);
+
+                product.setCurrency("RON");
+                product.setCategory("Telefoane");
+                product.setInStock(true);
+
+                // Rating aleatoriu între 4.0 și 5.0
+                double rating = 4.0 + (random.nextDouble() * 1.0);
+                product.setRating(Math.round(rating * 10.0) / 10.0);
+
+                // Alocăm o imagine eMAG din listă
+                product.setImageUrl(imaginiEmag[random.nextInt(imaginiEmag.length)]);
+
+                // Un link de afiliere standard fictiv bazat pe ID
+                product.setAffiliateLink("https://pft.ro/c/mock-affiliate-" + mockProfitshareId);
+
+                // Salvăm direct în baza ta de date din Neon cloud!
+                productRepository.save(product);
+                produseSalvate++;
+            }
+
+            System.out.println("📬 [Simulare] S-au salvat cu succes " + produseSalvate + " telefoane eMAG în Neon!");
 
         } catch (Exception e) {
-            System.err.println("Eroare la conexiunea cu API Profitshare: " + e.getMessage());
+            System.err.println("Eroare la generarea simulării: " + e.getMessage());
         }
+        return produseSalvate;
     }
 
     public List<OfferDTO> getOffers(String keyword, String category, String sortBy, int page,int size) {
@@ -173,7 +179,7 @@ public class ProfitshareService {
             // 1. Curățăm keyword-ul introdus de utilizator
             String lowerKeyword = removeDiacritics(keyword.toLowerCase());
 
-            filtered = offers.stream()
+            filtered = dbOffers.stream()
                     .filter(o -> {
                         // 2. Curățăm numele produsului curent (dacă nu e null)
                         String cleanName = o.name() != null ? removeDiacritics(o.name().toLowerCase()) : "";

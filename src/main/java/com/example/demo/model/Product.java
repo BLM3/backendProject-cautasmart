@@ -7,10 +7,9 @@ import jakarta.persistence.*;
 public class Product {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long dbId; // ID-ul intern al bazei de date (auto-increment)
-
-    private int profitshareId; // ID-ul original din JSON/Profitshare (cel din record)
+    //@GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "profitshare_id")
+    private int profitshareId;
 
     @Column(length = 500) // Îi dăm o lungime mai mare numelui în caz că e lung
     private String name;
@@ -19,41 +18,24 @@ public class Product {
     private String description;
 
     private double price;
+    @Column(name = "old_price")
     private double oldPrice;
+
     private String currency;
     private String category;
+
+    @Column(name = "in_stock")
     private boolean inStock;
+
     private double rating;
 
-    @Column(length = 1000) // URL-urile de imagini tind să fie lungi
+    @Column(name = "image_url", length = 1000)
     private String imageUrl;
 
-    @Column(length = 1000) // Link-urile de afiliere pot fi foarte lungi
+    @Column(name = "affiliate_link", length = 1000)
     private String affiliateLink;
 
     // Constructorul gol cerut obligatoriu de Hibernate
-    public Product() {}
-
-    // Constructor de ajutor pentru a converti ușor din DTO în Entitate
-    public Product(int profitshareId, String name, String description, double price, double oldPrice,
-                   String currency, String category, boolean inStock, double rating, String imageUrl, String affiliateLink) {
-        this.profitshareId = profitshareId;
-        this.name = name;
-        this.description = description;
-        this.price = price;
-        this.oldPrice = oldPrice;
-        this.currency = currency;
-        this.category = category;
-        this.inStock = inStock;
-        this.rating = rating;
-        this.imageUrl = imageUrl;
-        this.affiliateLink = affiliateLink;
-    }
-
-    // Getters și Setters (Sunt necesari pentru ca Spring Data JPA să citească datele)
-    public Long getDbId() { return dbId; }
-    public void setDbId(Long dbId) { this.dbId = dbId; }
-
     public int getProfitshareId() { return profitshareId; }
     public void setProfitshareId(int profitshareId) { this.profitshareId = profitshareId; }
 

@@ -7,6 +7,8 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import java.nio.file.Files;
@@ -15,7 +17,7 @@ import java.nio.file.Path;
 import java.util.List;
 @RestController
 @RequestMapping("/api/offers")
-@CrossOrigin(origins = "*") //http://localhost:3000 Permite apeluri de la frontend-ul React (portul 3000)
+@CrossOrigin(origins = "*")
 
 public class OfferController {
     private final ProfitshareService profitshareService;
@@ -43,4 +45,13 @@ public class OfferController {
 //    public String getProducts() throws IOException {
 //        return Files.readString(Path.of("./products.json"));
 //    }
+    @GetMapping("/sync")
+    public ResponseEntity<String> declanseazaSincronizareAutomata(@RequestParam(defaultValue = "10") int limit) {
+        int totalSalvate = profitshareService.sincronizeazaProduseDinProfitshare(limit);
+        if (totalSalvate > 0) {
+            return ResponseEntity.ok("Succes! Am descărcat și salvat automat " + totalSalvate + " produse în Neon.");
+        } else {
+            return ResponseEntity.badRequest().body("Sincronizarea a rulat, dar nu s-a putut salva niciun produs. Verifică consola IntelliJ pentru detalii de la API.");
+        }
+}
 }
