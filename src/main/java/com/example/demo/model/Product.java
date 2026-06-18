@@ -2,6 +2,9 @@ package com.example.demo.model;
 
 import jakarta.persistence.*;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Entity
 @Table(name = "products")
 public class Product {
@@ -34,6 +37,9 @@ public class Product {
 
     @Column(name = "affiliate_link", length = 1000)
     private String affiliateLink;
+
+    @Column(name = "images", columnDefinition = "text[]")
+    private List<String> images = new ArrayList<>();
 
     // Constructorul gol cerut obligatoriu de Hibernate
     public int getProfitshareId() { return profitshareId; }
@@ -68,4 +74,7 @@ public class Product {
 
     public String getAffiliateLink() { return affiliateLink; }
     public void setAffiliateLink(String affiliateLink) { this.affiliateLink = affiliateLink; }
+
+    public List<String> getImages() { return images; }
+    public void setImages(List<String> images) { this.images = images; }
 }

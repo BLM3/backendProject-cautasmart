@@ -1,4 +1,7 @@
 package com.example.demo.dto;
+
+import java.util.List;
+
 public record OfferDTO(
      int id,
      String name,
@@ -10,5 +13,6 @@ public record OfferDTO(
      boolean inStock,
      double rating,
      String imageUrl,
-     String affiliateLink
+     String affiliateLink,
+     List<String> images
 ) {}

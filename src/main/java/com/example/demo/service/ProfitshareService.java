@@ -86,6 +86,13 @@ public class ProfitshareService {
      * Metodă model pentru a trage produsele live prin API-ul lor în viitor
      */
     public int sincronizeazaProduseDinProfitshare(int limit) {
+        // 🛑 BLOCAJ DE SIGURANȚĂ: Schimbă pe 'true' doar dacă vrei vreodată să mai adaugi ceva
+        boolean permiteSincronizare = false;
+
+        if (!permiteSincronizare) {
+            System.out.println("Sincronizarea este blocată pentru a proteja baza de date din Neon!");
+            return 0; // Se oprește instant aici, fără să se atingă de DB
+        }
         int produseSalvate = 0;
         try {
             System.out.println("🧹 [PetShop 40] Curățăm baza de date și generăm cele " + limit + " produse eMAG reale...");
@@ -215,6 +222,7 @@ public class ProfitshareService {
 
                 product.setImageUrl(dateProdus[5]);
                 product.setAffiliateLink(dateProdus[6]);
+                product.setImages(List.of(dateProdus[5]));
 
                 productRepository.save(product);
                 produseSalvate++;
@@ -244,7 +252,8 @@ public class ProfitshareService {
                         p.isInStock(),
                         p.getRating(),
                         p.getImageUrl(),
-                        p.getAffiliateLink()
+                        p.getAffiliateLink(),
+                        p.getImages()
                 ))
                 .toList();
 
