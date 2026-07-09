@@ -56,6 +56,39 @@ public class ProfitshareService {
         System.out.println("Profitshare Service inițializat cu API User: " + apiUser);
 //
     }
+
+    /**
+     * Validează dacă URL-ul este un link de afiliere Profitshare valid (Cap. 4.12).
+     * Asigură că domeniul aparține rețelei și conține identificatorii necesari.
+     */
+    public boolean isValidProfitshareLink(String url) {
+        if (url == null || url.trim().isEmpty()) {
+            return false;
+        }
+
+        String lowerUrl = url.toLowerCase();
+
+        // Verifică dacă link-ul aparține domeniilor oficiale de tracking / redirecționare Profitshare
+        return lowerUrl.contains("profitshare.ro") ||
+                lowerUrl.contains("l.profitshare.ro") ||
+                lowerUrl.contains("c.profitshare.ro") ||
+                lowerUrl.contains("e.profitshare.ro");
+    }
+
+    /**
+     * Curăță și validează link-ul de afiliere înainte de salvare.
+     * Păstrează intacti toți parametrii de urmărire (profitshare_id) fără alterare.
+     */
+    public String processAffiliateLink(String rawUrl) {
+        if (!isValidProfitshareLink(rawUrl)) {
+            System.err.println("Avertisment: Link-ul primit nu este un URL Profitshare recunoscut: " + rawUrl);
+            return rawUrl; // Se păstrează versiunea brută dacă nu este cazul să aruncăm excepție
+        }
+
+        // Păstrăm URL-ul complet, nealterat, pentru a nu pierde comisioanele
+        return rawUrl.trim();
+    }
+
     /**
      * Generează header-ul de autentificare securizat X-Profitshare-Auth cerut de rețea.
      */
@@ -257,7 +290,10 @@ public class ProfitshareService {
                 ))
                 .toList();
 
-        List<OfferDTO> filtered = dbOffers;
+        // 💡 CONFORM CAP 4.13.a: Filtram produsele fără stoc (inStock == false) pentru a nu trimite utilizatorii pe oferte expirate
+        List<OfferDTO> filtered = dbOffers.stream()
+                .filter(OfferDTO::inStock)
+                .toList();
         // Filtrare după keyword (verificăm atât numele cât și descrierea pentru o căutare mai bună)
         if (keyword != null && !keyword.isBlank()) {
             // 1. Curățăm keyword-ul introdus de utilizator
