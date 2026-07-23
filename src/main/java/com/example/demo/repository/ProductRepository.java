@@ -11,7 +11,6 @@ import java.util.List;
 @Repository
 public interface ProductRepository extends JpaRepository<Product, Long> {
 
-    // Filtrare pe categorie (doar cele active/în stoc)
     List<Product> findByCategoryIgnoreCaseAndInStockTrue(String category);
 
     @Modifying

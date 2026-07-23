@@ -7,370 +7,213 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import javax.crypto.Mac;
-import javax.crypto.spec.SecretKeySpec;
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.net.HttpURLConnection;
-import java.net.URI;
-import java.net.URL;
-import java.net.URLEncoder;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.nio.charset.StandardCharsets;
-import java.text.Normalizer;
-import java.time.Instant;
-import java.util.*;
-import java.io.IOException;
 import java.io.InputStream;
+import java.text.Normalizer;
+import java.util.*;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.regex.Pattern;
 @Service
-
 public class ProfitshareService {
 
     @Autowired
     private ProductRepository productRepository;
-//    @Value("${profitshare.data.path}")
-    @Value("${profitshare.api.user}")
-    private String apiUser;
 
-    @Value("${profitshare.api.key}")
-    private String apiKey;
-    //@Value("${profitshare.data.path}")
-
-    private final HttpClient httpClient = HttpClient.newHttpClient();
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    @PostConstruct
-    public void init() {
-        System.out.println("Profitshare Service inițializat cu API User: " + apiUser);
-//
+    /**
+     * Importă și mapează feed-ul JSON salvat în src/main/resources/feed.json
+     */
+    @Transactional
+    public int importFeedFromJsonFile(String filename) {
+        int count = 0;
+        try {
+            ClassPathResource resource = new ClassPathResource(filename);
+            InputStream inputStream = resource.getInputStream();
+
+            JsonNode rootNode = objectMapper.readTree(inputStream);
+            List<Product> productsToSave = new ArrayList<>();
+
+            if (rootNode.isArray()) {
+                for (JsonNode node : rootNode) {
+                    Product product = mapJsonNodeToProduct(node);
+                    productsToSave.add(product);
+                }
+            } else if (rootNode.isObject()) {
+                productsToSave.add(mapJsonNodeToProduct(rootNode));
+            }
+
+            // Curățare bază de date și re-salvare
+            productRepository.deleteAllInBatch();
+            List<Product> saved = productRepository.saveAll(productsToSave);
+            count = saved.size();
+
+            System.out.println("✅ Feed-ul a fost importat cu succes! Produse adăugate: " + count);
+
+        } catch (Exception e) {
+            System.err.println("❌ Eroare la citirea/importul feed-ului JSON: " + e.getMessage());
+            e.printStackTrace();
+        }
+        return count;
     }
 
     /**
-     * Validează dacă URL-ul este un link de afiliere Profitshare valid (Cap. 4.12).
-     * Asigură că domeniul aparține rețelei și conține identificatorii necesari.
+     * Mapează structura JSON direct pe Entitatea `Product`
      */
-    public boolean isValidProfitshareLink(String url) {
-        if (url == null || url.trim().isEmpty()) {
-            return false;
+    private Product mapJsonNodeToProduct(JsonNode node) {
+        Product p = new Product();
+
+        p.setAdvName(getTextValue(node, "adv_name"));
+        p.setCategory(getTextValue(node, "category"));
+        p.setBrand(getTextValue(node, "manufacturer"));
+
+        // Limitează numele la 500 caractere conform DB constraint
+        String name = getTextValue(node, "product_name");
+        p.setName(name.length() > 500 ? name.substring(0, 497) + "..." : name);
+
+        p.setDescription(getTextValue(node, "product_desc"));
+
+        // Calculare/Parsare Preț & Reducere
+        double priceVat = node.has("price_vat") && !node.get("price_vat").isNull()
+                ? node.get("price_vat").asDouble(0.0) : 0.0;
+
+        String discountedStr = getTextValue(node, "price_discounted");
+        double priceDiscounted = 0.0;
+
+        if (!discountedStr.isBlank()) {
+            try {
+                priceDiscounted = Double.parseDouble(discountedStr);
+            } catch (NumberFormatException ignored) {}
         }
 
-        String lowerUrl = url.toLowerCase();
+        if (priceDiscounted > 0 && priceDiscounted < priceVat) {
+            p.setPrice(priceDiscounted);
+            p.setOldPrice(priceVat);
+            double discPercent = ((priceVat - priceDiscounted) / priceVat) * 100.0;
+            p.setDiscount(Math.round(discPercent * 100.0) / 100.0);
+        } else {
+            p.setPrice(priceVat);
+            p.setOldPrice(priceVat);
+            p.setDiscount(0.0);
+        }
 
-        // Verifică dacă link-ul aparține domeniilor oficiale de tracking / redirecționare Profitshare
-        return lowerUrl.contains("profitshare.ro") ||
-                lowerUrl.contains("l.profitshare.ro") ||
-                lowerUrl.contains("c.profitshare.ro") ||
-                lowerUrl.contains("e.profitshare.ro");
+        p.setCurrency(getTextValue(node, "currency").isEmpty() ? "lei" : getTextValue(node, "currency"));
+
+        // Stoc: String 'in_stock' -> Boolean
+        String avail = getTextValue(node, "availability");
+        p.setInStock("in_stock".equalsIgnoreCase(avail));
+
+        // Rating Implicat (pentru NOT NULL constraint)
+        p.setRating(0.0);
+
+        // Imagini & Link-uri
+        String pic = getTextValue(node, "product_pic");
+        p.setImageUrl(pic);
+        if (!pic.isBlank()) {
+            p.setImages(List.of(pic));
+        }
+
+        String rawAffLink = getTextValue(node, "product_aff_link");
+        p.setAffiliateLink(processAffiliateLink(rawAffLink));
+
+        p.setLink(getTextValue(node, "link"));
+
+        return p;
     }
 
-    /**
-     * Curăță și validează link-ul de afiliere înainte de salvare.
-     * Păstrează intacti toți parametrii de urmărire (profitshare_id) fără alterare.
-     */
+    private String getTextValue(JsonNode node, String fieldName) {
+        if (node.has(fieldName) && !node.get(fieldName).isNull()) {
+            return node.get(fieldName).asText().trim();
+        }
+        return "";
+    }
+
     public String processAffiliateLink(String rawUrl) {
-        if (!isValidProfitshareLink(rawUrl)) {
-            System.err.println("Avertisment: Link-ul primit nu este un URL Profitshare recunoscut: " + rawUrl);
-            return rawUrl; // Se păstrează versiunea brută dacă nu este cazul să aruncăm excepție
+        if (rawUrl == null || rawUrl.isBlank()) return "";
+        if (rawUrl.startsWith("//")) {
+            return "https:" + rawUrl;
         }
-
-        // Păstrăm URL-ul complet, nealterat, pentru a nu pierde comisioanele
         return rawUrl.trim();
     }
 
-    /**
-     * Generează header-ul de autentificare securizat X-Profitshare-Auth cerut de rețea.
-     */
-    private String genereazaHeaderAutentificare(String metodaHttp, String urlPath, String timestamp) {
-        try {
-            String textDeSemnat = metodaHttp.toUpperCase() + urlPath + "/" + timestamp;
-
-            Mac sha256Hmac = Mac.getInstance("HmacSHA256");
-            SecretKeySpec secretKey = new SecretKeySpec(apiKey.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
-            sha256Hmac.init(secretKey);
-
-            byte[] hashBytes = sha256Hmac.doFinal(textDeSemnat.getBytes(StandardCharsets.UTF_8));
-
-            StringBuilder hexString = new StringBuilder();
-            for (byte b : hashBytes) {
-                String hex = Integer.toHexString(0xff & b);
-                if (hex.length() == 1) hexString.append('0');
-                hexString.append(hex);
-            }
-
-            return hexString.toString();
-        } catch (Exception e) {
-            System.err.println("Eroare la generarea semnăturii API: " + e.getMessage());
-            return "";
-        }
-    }
-    /**
-     * Metodă model pentru a trage produsele live prin API-ul lor în viitor
-     */
-    public int sincronizeazaProduseDinProfitshare(int limit) {
-        // 🛑 BLOCAJ DE SIGURANȚĂ: Schimbă pe 'true' doar dacă vrei vreodată să mai adaugi ceva
-        boolean permiteSincronizare = false;
-
-        if (!permiteSincronizare) {
-            System.out.println("Sincronizarea este blocată pentru a proteja baza de date din Neon!");
-            return 0; // Se oprește instant aici, fără să se atingă de DB
-        }
-        int produseSalvate = 0;
-        try {
-            System.out.println("🧹 [PetShop 40] Curățăm baza de date și generăm cele " + limit + " produse eMAG reale...");
-            // Pasul 1: Curățare completă a bazei de date
-            productRepository.deleteAll();
-
-            String[][] produseRealeEmag = {
-                    {
-                            "Hrană uscată pentru câini Royal Canin Maxi Adult, 15 kg",
-                            "Hrană nutrițională completă pentru câini adulți de talie mare (26-44 kg). Recomandată pentru articulații puternice și digestie optimă.",
-                            "264.90", "310.00", "Hrană Câini",
-                            "https://s13emagst.akamaized.net/products/1256/1255535/images/res_9be8606bf639891e457ca623b379e49a.jpg",
-                            "https://e.profitshare.ro/l/11823456"
-                    },
-                    {
-                            "Hrană uscată pentru pisici Purina ONE Bifensis Adult cu Pui, 10 kg",
-                            "Formulă specială cu bacterii funcționale benefice, dovedită științific că ajută la întărirea sistemului imunitar al pisicii.",
-                            "189.99", "220.00", "Hrană Pisici",
-                            "https://s13emagst.akamaized.net/products/25633/25632291/images/res_c8541e4284d7be1f07b1d9bf5c1176b5.jpg",
-                            "https://e.profitshare.ro/l/11823457"
-                    },
-                    {
-                            "Ansamblu de joacă pentru pisici Kring, stâlp sisal, 120cm, Gri",
-                            "Centru de activități ideal pentru zgâriat, cățărat și dormit. Include platforme confortabile și jucării suspendate.",
-                            "145.00", "199.00", "Ansambluri Pisici",
-                            "https://s13emagst.akamaized.net/products/32412/32411995/images/res_a7dfb3cf784d0092c6bf4843bcf20cd3.jpg",
-                            "https://e.profitshare.ro/l/11823458"
-                    },
-                    {
-                            "Culcuș ortopedic pentru câini de talie medie și mare, XL, Albastru",
-                            "Pătuț premium cu spumă de înaltă densitate care protejează articulațiile animalului tău. Husă complet detașabilă.",
-                            "129.90", "165.00", "Accesorii Câini",
-                            "https://s13emagst.akamaized.net/products/16345/16344102/images/res_04da6f13e7bbdbf54462cb3c0b1bb924.jpg",
-                            "https://e.profitshare.ro/l/11823459"
-                    },
-                    {
-                            "Nisip pentru pisici Ever Clean Total Cover, 10 Litri",
-                            "Nisip premium pe bază de argilă cu tehnologie cu cărbune activ care captează și blochează mirosurile neplăcute instantaneu.",
-                            "84.99", "99.00", "Hrană Pisici",
-                            "https://s13emagst.akamaized.net/products/36254/36253410/images/res_90bd8f16bc47ad19d850d53c076b921d.jpg",
-                            "https://e.profitshare.ro/l/11823460"
-                    },
-                    {
-                            "Lesă retractabilă pentru câini Flexi New Classic M, banda 5m, Negru",
-                            "Sistem brevetat de frânare rapidă și confortabilă pentru controlul sigur al câinelui tău de până la maximum 25 kg.",
-                            "67.50", "85.00", "Accesorii Câini",
-                            "https://s13emagst.akamaized.net/products/2154/2153215/images/res_cd054b036cf0e8544cbf873c54bc9123.jpg",
-                            "https://e.profitshare.ro/l/11823461"
-                    },
-                    {
-                            "Mâncare umedă pisici Felix Fantastic în Aspic, 48 x 85g",
-                            "Pachet economic cu selecție delicioasă de carne (pui, vită, somon). Bucățele fragede pentru o masă echilibrată.",
-                            "98.00", "120.00", "Hrană Pisici",
-                            "https://s13emagst.akamaized.net/products/29841/29840245/images/res_d04a62c5fb3cbb123cf44569cbefc123.jpg",
-                            "https://e.profitshare.ro/l/11823462"
-                    },
-                    {
-                            "Hrană uscată pentru câini juniori Acana Puppy & Junior, 11.4 kg",
-                            "Mâncare biologic adecvată plină de pui crescut în libertate, ouă proaspete și pește pescuit în sălbăticie. Fără cereale.",
-                            "299.00", "345.00", "Hrană Câini",
-                            "https://s13emagst.akamaized.net/products/1425/1424352/images/res_ec542cb3aef4d12c3f87d4ba23cfb890.jpg",
-                            "https://e.profitshare.ro/l/11823463"
-                    },
-                    {
-                            "Acvariu complet echipat Tetra Starter Line, LED, 30 Litri",
-                            "Acvariu ideal pentru începători. Include sistem puternic de filtrare, încălzitor stabil, iluminare LED ecologică și hrană test.",
-                            "249.99", "299.00", "Acvaristică",
-                            "https://s13emagst.akamaized.net/products/14352/14351104/images/res_e213ab54fe12bc47ad89fc32bc10de89.jpg",
-                            "https://e.profitshare.ro/l/11823464"
-                    },
-                    {
-                            "Hrană pentru papagali peruși Padovan Grandmix Cocorite, 1 kg",
-                            "Amestec de semințe selecționate de înaltă calitate, îmbogățit cu fructe deshidratate și vitamine esențiale pentru peruși vioi.",
-                            "22.50", "29.00", "Păsări",
-                            "https://s13emagst.akamaized.net/products/1054/1053124/images/res_bc89da1254efbc34ad89fe1235cb90ad.jpg",
-                            "https://e.profitshare.ro/l/11823465"
-                    },
-                    {
-                            "Jucărie interactivă pentru câini Kong Classic, Cauciuc Natural, L",
-                            "Jucăria de aur rezistentă la mușcături. Poate fi umplută cu recompense sau unt de arahide pentru a alunga plictiseala câinelui.",
-                            "59.90", "75.00", "Accesorii Câini",
-                            "https://s13emagst.akamaized.net/products/5412/5411245/images/res_ab12cb54fe89dc23ab45ef8902cbdf45.jpg",
-                            "https://e.profitshare.ro/l/11823466"
-                    },
-                    {
-                            "Fântână automată de apă pentru pisici Catit Flower Fountain, 3L",
-                            "Fântână cu triplă filtrare care încurajează pisica să bea mai multă apă proaspătă, prevenind afecțiunile renale frecvente.",
-                            "115.00", "149.00", "Accesorii Pisici",
-                            "https://s13emagst.akamaized.net/products/21453/21452140/images/res_fc89ab5409edbc34daef1234cb90fedc.jpg",
-                            "https://e.profitshare.ro/l/11823467"
-                    }
-            };
-
-            Random random = new Random();
-
-            for (int i = 0; i < limit; i++) {
-                // Folosim modulo (%) pentru a parcurge lista de produse reale în buclă și a genera variații unice
-                String[] dateProdus = produseRealeEmag[i % produseRealeEmag.length];
-
-                Product product = new Product();
-                int mockId = 9000 + i;
-                product.setProfitshareId(mockId);
-
-                // Creăm nume unice pentru pachete dacă indexul depășește numărul inițial de produse din listă
-                String nume = dateProdus[0];
-                if (i >= produseRealeEmag.length) {
-                    int pachetNumar = (i /produseRealeEmag.length) + 1;
-                    nume += " - Oferta Family Pack v" + pachetNumar;
-                }
-                product.setName(nume);
-                product.setDescription(dateProdus[1] + " Asigură fericirea companionului tău. Livrat rapid în siguranță de eMAG.");
-
-                // Generăm prețuri ușor diferite (+/- câțiva lei) ca să nu fie toate identice pe ecran
-                double variatiePret = (random.nextDouble() * 16) - 8; // +/- 8 RON
-                double pretCurent = Math.max(15.0, Double.parseDouble(dateProdus[2]) + variatiePret);
-                double pretVechi = pretCurent + 25 + random.nextInt(40);
-
-                product.setPrice(Math.round(pretCurent * 100.0) / 100.0);
-                product.setOldPrice(Math.round(pretVechi * 100.0) / 100.0);
-                product.setCurrency("RON");
-                product.setCategory(dateProdus[4]);
-                product.setInStock(true);
-
-                // Review-uri dinamice de la cumpărători reali
-                double rating = 4.1 + (random.nextDouble() * 0.9);
-                product.setRating(Math.round(rating * 10.0) / 10.0);
-
-                product.setImageUrl(dateProdus[5]);
-                product.setAffiliateLink(dateProdus[6]);
-                product.setImages(List.of(dateProdus[5]));
-
-                productRepository.save(product);
-                produseSalvate++;
-            }
-
-            System.out.println("📬 [PetShop 40] Succes deplin! Am salvat exact " + produseSalvate + " produse Premium eMAG în baza Neon cloud!");
-
-        } catch (Exception e) {
-            System.err.println("Eroare la generarea celor 40 de produse: " + e.getMessage());
-        }
-        return produseSalvate;
-    }
-
-    public List<OfferDTO> getOffers(String keyword, String category, String sortBy, int page,int size) {
+    public List<OfferDTO> getOffers(String keyword, String category, String sortBy, int page, int size) {
         List<Product> allProducts = productRepository.findAll();
 
-        // Convertim obiectele Product din baza de date în OfferDTO-uri pentru a păstra logica ta intactă
         List<OfferDTO> dbOffers = allProducts.stream()
                 .map(p -> new OfferDTO(
+                        p.getDbId(),
                         p.getProfitshareId(),
+                        p.getAdvName(),
                         p.getName(),
                         p.getDescription(),
                         p.getPrice(),
                         p.getOldPrice(),
+                        p.getDiscount(),
                         p.getCurrency(),
                         p.getCategory(),
+                        p.getBrand(),
                         p.isInStock(),
                         p.getRating(),
                         p.getImageUrl(),
                         p.getAffiliateLink(),
+                        p.getLink(),
                         p.getImages()
                 ))
                 .toList();
 
-        // 💡 CONFORM CAP 4.13.a: Filtram produsele fără stoc (inStock == false) pentru a nu trimite utilizatorii pe oferte expirate
         List<OfferDTO> filtered = dbOffers.stream()
                 .filter(OfferDTO::inStock)
                 .toList();
-        // Filtrare după keyword (verificăm atât numele cât și descrierea pentru o căutare mai bună)
+
         if (keyword != null && !keyword.isBlank()) {
-            // 1. Curățăm keyword-ul introdus de utilizator
             String lowerKeyword = removeDiacritics(keyword.toLowerCase());
-
-            filtered = dbOffers.stream()
+            filtered = filtered.stream()
                     .filter(o -> {
-                        // 2. Curățăm numele produsului curent (dacă nu e null)
                         String cleanName = o.name() != null ? removeDiacritics(o.name().toLowerCase()) : "";
-
-                        // 3. Curățăm descrierea produsului curent (dacă nu e null)
                         String cleanDescription = o.description() != null ? removeDiacritics(o.description().toLowerCase()) : "";
-
-                        // 4. Facem comparația pe textele „curățate” de diacritice
                         return cleanName.contains(lowerKeyword) || cleanDescription.contains(lowerKeyword);
                     })
                     .toList();
         }
-        //filtrare dupa categorie
+
         if (category != null && !category.isBlank() && !category.equalsIgnoreCase("all")) {
             filtered = filtered.stream()
                     .filter(o -> o.category() != null && o.category().equalsIgnoreCase(category))
                     .toList();
         }
 
-        // sortare dinamica
         if (sortBy != null && !sortBy.isBlank()) {
-            // Creăm o listă mutabilă din stream pentru a o putea sorta
             List<OfferDTO> mutableList = new ArrayList<>(filtered);
-
             switch (sortBy) {
-                case "price_asc":
-                    mutableList.sort(Comparator.comparingDouble(OfferDTO::price));
-                    break;
-                case "price_desc":
-                    mutableList.sort(Comparator.comparingDouble(OfferDTO::price).reversed());
-                    break;
-                case "rating_desc":
-                    mutableList.sort(Comparator.comparingDouble(OfferDTO::rating).reversed());
-                    break;
-                default:
-                    // Rămâne sortarea implicită din fișier
-                    break;
+                case "price_asc" -> mutableList.sort(Comparator.comparingDouble(OfferDTO::price));
+                case "price_desc" -> mutableList.sort(Comparator.comparingDouble(OfferDTO::price).reversed());
+                case "rating_desc" -> mutableList.sort(Comparator.comparingDouble(OfferDTO::rating).reversed());
+                case "discount_desc" -> mutableList.sort(Comparator.comparing(OfferDTO::discount, Comparator.nullsLast(Comparator.reverseOrder())));
             }
             filtered = mutableList;
         }
 
-        // calcul paginare
         int start = page * size;
-
         if (start >= filtered.size()) {
             return Collections.emptyList();
         }
-
         int end = Math.min(start + size, filtered.size());
 
         return filtered.subList(start, end);
     }
-    /**
-     * Metodă Helper care elimină diacriticele dintr-un text.
-     * Transformă "cămașă" în "camasa", "încălțăminte" în "incaltaminte", etc.
-     */
+
     private String removeDiacritics(String text) {
-        if (text == null) {
-            return "";
-        }
-        // Pasul 1: Normalizăm textul în forma descompusă (NFD). De exemplu, 'ă' devine 'a' + un accent separat.
+        if (text == null) return "";
         String normalized = Normalizer.normalize(text, Normalizer.Form.NFD);
-
-        // Pasul 2: Folosim un Regex pentru a șterge toate semnele diacritice (caracterele non-spacing mark)
         Pattern pattern = Pattern.compile("\\p{InCombiningDiacriticalMarks}+");
-        String result = pattern.matcher(normalized).replaceAll("");
-
-        // Pasul 3: Corecție specială pentru ș-ul și ț-ul românesc vechi/nou (care uneori nu se curăță prin NFD standard)
-        return result.replace("ș", "s")
-                .replace("ț", "t")
-                .replace("Ș", "s")
-                .replace("Ț", "t");
+        return pattern.matcher(normalized).replaceAll("")
+                .replace("ș", "s").replace("ț", "t")
+                .replace("Ș", "s").replace("Ț", "t");
     }
 }

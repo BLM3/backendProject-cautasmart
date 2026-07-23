@@ -31,3 +31,12 @@ build/
 
 ### VS Code ###
 .vscode/
+
+# Exclude fișierul de date
+feed.json
+
+# Exclude fișiere de mediu / secrete
+.env
+
+# Exclude dependințele Node.js
+node_modules/
