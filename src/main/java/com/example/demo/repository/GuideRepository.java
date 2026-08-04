@@ -34,7 +34,7 @@ public interface GuideRepository extends JpaRepository<Guide, Long> {
     List<Guide> findAllByOrderByViewsCountDesc();
 
     @EntityGraph(attributePaths = {"items", "items.pros", "items.cons"})
-    @Query("SELECT DISTINCT g FROM Guide g WHERE LOWER(g.category) = LOWER(:category) ORDER BY COALESCE(g.viewsCount, 0) DESC, g.updatedAt DESC")
+    @Query("SELECT DISTINCT g FROM Guide g WHERE LOWER(g.category) LIKE LOWER(CONCAT('%', :category, '%')) ORDER BY COALESCE(g.viewsCount, 0) DESC, g.updatedAt DESC")
     List<Guide> findByCategoryIgnoreCaseOrderByViewsCountDesc(@Param("category") String category);
 
 
