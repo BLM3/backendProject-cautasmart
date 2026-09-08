@@ -2,6 +2,7 @@ package com.example.demo.model;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
+import org.hibernate.annotations.BatchSize;
 import java.util.Set;
 import java.util.HashSet;
 
@@ -23,16 +24,16 @@ public class GuideItem {
     @Column(columnDefinition = "TEXT")
     private String reviewSummary;
 
-    // SCHIMBATED: List -> Set
-    @ElementCollection
+    @ElementCollection(fetch = FetchType.LAZY)
     @CollectionTable(name = "guide_item_pros", joinColumns = @JoinColumn(name = "guide_item_id"))
     @Column(name = "pros")
+    @BatchSize(size = 20)
     private Set<String> pros = new HashSet<>();
 
-    // SCHIMBATED: List -> Set
-    @ElementCollection
+    @ElementCollection(fetch = FetchType.LAZY)
     @CollectionTable(name = "guide_item_cons", joinColumns = @JoinColumn(name = "guide_item_id"))
     @Column(name = "cons")
+    @BatchSize(size = 20)
     private Set<String> cons = new HashSet<>();
 
     private String affiliateUrl;
