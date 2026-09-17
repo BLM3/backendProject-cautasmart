@@ -28,7 +28,7 @@ public class GuideServiceImpl implements GuideService {
         CATEGORY_MAP.put("supravegheresecuritate", List.of("Camere Supraveghere", "Sisteme de Alarmă", "Smart Lock & Interfoane"));
         CATEGORY_MAP.put("uneltebricolaj", List.of("Scule Cu Acumulator", "Generatoare & Energie Solară", "Echipamente Atelier"));
         CATEGORY_MAP.put("bebelusicopii", List.of("Aparate & Hrănire Bebeluşi", "Cărucioare & Scaune Auto", "Jucării & Educație", "Monitorizare & Îngrijire"));
-        CATEGORY_MAP.put("petshopanimale", List.of("Accesorii & Îngrijire Animale", "Aspiratoare & Păr Animale", "Hrănitoare Inteligente & Dozatoare", "Toalete Inteligente Pisici"));
+        CATEGORY_MAP.put("petshopanimale", List.of("Accesorii & Îngrijire Animale", "Aspiratoare & Păr Animale", "Ansamblu de joacă & Hrană", "Toalete Inteligente Pisici"));
     }
 
     public GuideServiceImpl(GuideRepository guideRepository) {
