@@ -22,11 +22,11 @@ public class GuideServiceImpl implements GuideService {
     private static final Map<String, List<String>> CATEGORY_MAP = new HashMap<>();
 
     static {
-        CATEGORY_MAP.put("tech", List.of("Televizoare OLED & LED", "Laptopuri & PC-uri", "Telefoane Apple", "Tablete & E-readers", "Audio & Căști Bluetooth"));
+        CATEGORY_MAP.put("tech", List.of("Televizoare OLED & LED", "Telefoane Apple", "Tablete & E-readers", "Audio & Căști Bluetooth"));
         CATEGORY_MAP.put("ingrijirepersonala", List.of("Plăci de păr & Perii de îndreptat", "Uscătoare de păr", "Aparate de tuns", "Ondulatoare" ));
-        CATEGORY_MAP.put("home", List.of("Home", "Aspiratoare Robot", "Climatizare & Purificatoare", "Espressoare & Cafetiere", "Electrocasnice Mari"));
-        CATEGORY_MAP.put("gaming", List.of("Gaming", "Monitoare Gaming", "Periferice & Scaune Gaming", "Console & Accesorii"));
-        CATEGORY_MAP.put("fitness", List.of("Fitness", "Ceasuri Smart & Brățări", "Benzi de Alergat & Biciclete", "Accesorii Recuperare"));
+        CATEGORY_MAP.put("home", List.of( "Aspiratoare Verticale", "Purificatoare", "Espressoare", "Electrocasnice Mari"));
+        CATEGORY_MAP.put("gaming", List.of( "Monitoare Gaming", "Laptopuri & PC-uri", "Periferice & Scaune Gaming", "Console & Accesorii"));
+        CATEGORY_MAP.put("fitness", List.of("Ceasuri Smart & Brățări", "Benzi de Alergat & Biciclete", "Accesorii Recuperare"));
         CATEGORY_MAP.put("supravegheresecuritate", List.of("Camere Supraveghere", "Sisteme de Alarmă", "Smart Lock & Interfoane"));
         CATEGORY_MAP.put("uneltebricolaj", List.of("Scule Cu Acumulator", "Generatoare & Energie Solară", "Echipamente Atelier"));
         CATEGORY_MAP.put("bebelusicopii", List.of("Aparate & Hrănire Bebeluşi", "Cărucioare & Scaune Auto", "Jucării & Educație", "Monitorizare & Îngrijire"));
