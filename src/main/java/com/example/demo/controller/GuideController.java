@@ -1,4 +1,6 @@
 package com.example.demo.controller;
+
+import com.example.demo.dto.GuideSummaryDTO;
 import com.example.demo.model.Guide;
 import com.example.demo.service.GuideService;
 import org.springframework.http.ResponseEntity;
@@ -17,16 +19,16 @@ public class GuideController {
         this.guideService = guideService;
     }
 
-    // 1. Toate ghidurile (pentru Homepage sau Pagina de Categorie)
+    // 1. Lista de ghiduri ușoară (DTO) pentru Homepage sau Pagina de Categorie
     @GetMapping
-    public ResponseEntity<List<Guide>> getGuides(
+    public ResponseEntity<List<GuideSummaryDTO>> getGuides(
             @RequestParam(required = false) String category,
             @RequestParam(required = false, defaultValue = "recent") String sortBy) {
 
         return ResponseEntity.ok(guideService.getGuidesByCategoryAndSort(category, sortBy));
     }
 
-    // 2. Un singur ghid după Slug (Când utilizatorul dă click pe un card)
+    // 2. Un singur ghid complet cu toate produsele/pros/cons (după Slug)
     @GetMapping("/{slug}")
     public ResponseEntity<Guide> getGuideBySlug(@PathVariable String slug) {
         return guideService.getGuideBySlug(slug)
@@ -34,9 +36,9 @@ public class GuideController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    // 3. Căutare după cuvinte cheie (folosit de Navbar Search)
+    // 3. Căutare rapidă (DTO) folosită de bara de căutare
     @GetMapping("/search")
-    public ResponseEntity<List<Guide>> searchGuides(@RequestParam String q) {
+    public ResponseEntity<List<GuideSummaryDTO>> searchGuides(@RequestParam String q) {
         return ResponseEntity.ok(guideService.searchGuides(q));
     }
 }

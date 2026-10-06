@@ -1,8 +1,10 @@
 package com.example.demo.service;
 
+import com.example.demo.dto.GuideSummaryDTO;
 import com.example.demo.model.Guide;
 import com.example.demo.repository.GuideRepository;
 import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,12 +19,11 @@ public class GuideServiceImpl implements GuideService {
 
     private final GuideRepository guideRepository;
 
-    // Mapare între Categoria Mamă (din Frontend) și Subcategoriile reale din Baza de Date
     private static final Map<String, List<String>> CATEGORY_MAP = new HashMap<>();
 
     static {
         CATEGORY_MAP.put("tech", List.of("Televizoare OLED & LED", "Laptopuri & PC-uri", "Telefoane Smart", "Tablete & E-readers", "Audio & Căști Bluetooth"));
-        CATEGORY_MAP.put("ingrijirepersonala", List.of("Plăci de păr & Perii de îndreptat", "Uscătoare de păr", "Aparate de tuns", "Ondulatoare"));
+        CATEGORY_MAP.put("ingrijirepersonala", List.of("Plăci de păr & Perii de îndreptat", "Uscătoare de păr", "Aparate de tuns", "Ondulatoare" ));
         CATEGORY_MAP.put("home", List.of("Home", "Aspiratoare Robot", "Climatizare & Purificatoare", "Espressoare & Cafetiere", "Electrocasnice Mari"));
         CATEGORY_MAP.put("gaming", List.of("Gaming", "Monitoare Gaming", "Periferice & Scaune Gaming", "Console & Accesorii"));
         CATEGORY_MAP.put("fitness", List.of("Fitness", "Ceasuri Smart & Brățări", "Benzi de Alergat & Biciclete", "Accesorii Recuperare"));
@@ -37,13 +38,13 @@ public class GuideServiceImpl implements GuideService {
     }
 
     @Override
-    public List<Guide> getGuidesByCategory(String category) {
+    public List<GuideSummaryDTO> getGuidesByCategory(String category) {
         return getGuidesByCategoryAndSort(category, "recent");
     }
 
-    @CacheEvict(value = "guides_category", allEntries = true)
+    @Cacheable(value = "guides_category", key = "(#category != null ? #category : 'all') + '_' + (#sortBy != null ? #sortBy : 'recent')")
     @Override
-    public List<Guide> getGuidesByCategoryAndSort(String category, String sortBy) {
+    public List<GuideSummaryDTO> getGuidesByCategoryAndSort(String category, String sortBy) {
 
         String decodedCategory = category;
         if (category != null && !category.trim().isEmpty()) {
@@ -59,8 +60,6 @@ public class GuideServiceImpl implements GuideService {
             }
         }
 
-        System.out.println("💾 [SQL Executat] Categorie Curățată finală: [" + decodedCategory + "]");
-
         boolean isAllCategories = (decodedCategory == null || decodedCategory.isEmpty() || decodedCategory.equalsIgnoreCase("All"));
         String cleanSort = (sortBy == null) ? "recent" : sortBy.trim().toLowerCase();
 
@@ -68,7 +67,6 @@ public class GuideServiceImpl implements GuideService {
             return getSortedAllGuides(cleanSort);
         }
 
-        // Curățăm denumirea pentru a verifica în Map dacă este Categorie Mamă
         String key = decodedCategory.toLowerCase()
                 .replace(" ", "")
                 .replace("-", "")
@@ -78,43 +76,40 @@ public class GuideServiceImpl implements GuideService {
                 .replace("ț", "t").replace("ţ", "t")
                 .replace("ă", "a").replace("â", "a");
 
-        // DACA S-A SELECTAT O CATEGORIE MAMĂ:
         if (CATEGORY_MAP.containsKey(key)) {
             List<String> subcategories = CATEGORY_MAP.get(key);
-            System.out.println("🔍 S-a detectat Categoria Mamă [" + key + "]. Căutăm subcategoriile: " + subcategories);
-            return guideRepository.findByCategoryInIgnoreCase(subcategories);
+            return guideRepository.findDTOByCategoryInIgnoreCase(subcategories);
         }
 
-        // DACA S-A SELECTAT O SUBCATEGORIE INDIVIDUALĂ:
         switch (cleanSort) {
             case "views":
             case "views_desc":
-                return guideRepository.findByCategoryIgnoreCaseOrderByViewsCountDesc(decodedCategory);
+                return guideRepository.findDTOByCategoryIgnoreCaseOrderByViewsCountDesc(decodedCategory);
 
             case "price_asc":
-                return guideRepository.findAllOrderByMinPriceAsc();
+                return guideRepository.findDTOByCategoryOrderByMinPriceAsc(decodedCategory);
 
             case "price_desc":
-                return guideRepository.findAllOrderByMaxPriceDesc();
+                return guideRepository.findDTOByCategoryOrderByMaxPriceDesc(decodedCategory);
 
             case "recent":
             default:
-                return guideRepository.findByCategoryIgnoreCaseOrderByUpdatedAtDesc(decodedCategory);
+                return guideRepository.findDTOByCategoryIgnoreCaseOrderByUpdatedAtDesc(decodedCategory);
         }
     }
 
-    private List<Guide> getSortedAllGuides(String cleanSort) {
+    private List<GuideSummaryDTO> getSortedAllGuides(String cleanSort) {
         switch (cleanSort) {
             case "views":
             case "views_desc":
-                return guideRepository.findAllByOrderByViewsCountDesc();
+                return guideRepository.findAllDTOByOrderByViewsCountDesc();
             case "price_asc":
-                return guideRepository.findAllOrderByMinPriceAsc();
+                return guideRepository.findAllDTOOrderByMinPriceAsc();
             case "price_desc":
-                return guideRepository.findAllOrderByMaxPriceDesc();
+                return guideRepository.findAllDTOOrderByMaxPriceDesc();
             case "recent":
             default:
-                return guideRepository.findAllByOrderByUpdatedAtDesc();
+                return guideRepository.findAllDTOByOrderByUpdatedAtDesc();
         }
     }
 
@@ -127,17 +122,15 @@ public class GuideServiceImpl implements GuideService {
 
         String cleanSlug = slug.trim().toLowerCase();
         guideRepository.incrementViewsCount(cleanSlug);
-        System.out.println("👁️ [Views] S-a incrementat contorul pentru slug: " + cleanSlug);
-
         return guideRepository.findBySlug(cleanSlug);
     }
 
     @Override
-    public List<Guide> searchGuides(String query) {
+    public List<GuideSummaryDTO> searchGuides(String query) {
         if (query == null || query.trim().length() < 2) {
             return Collections.emptyList();
         }
-        return guideRepository.searchGuides(query.trim());
+        return guideRepository.searchDTOGuides(query.trim());
     }
 
     @Override
