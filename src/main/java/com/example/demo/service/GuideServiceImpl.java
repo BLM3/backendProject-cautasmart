@@ -23,14 +23,48 @@ public class GuideServiceImpl implements GuideService {
     private static final Map<String, List<String>> CATEGORY_MAP = new HashMap<>();
 
     static {
-        CATEGORY_MAP.put("tech", List.of("Televizoare OLED & LED", "Telefoane Apple", "Tablete & E-readers", "Audio & Căști Bluetooth"));
-        CATEGORY_MAP.put("ingrijirepersonala", List.of("Plăci de păr & Perii de îndreptat", "Uscătoare de păr", "Aparate de tuns", "Ondulatoare"));
-        CATEGORY_MAP.put("home", List.of("Aspiratoare Verticale", "Purificatoare", "Espressoare", "Electrocasnice Mari"));
-        CATEGORY_MAP.put("gaming", List.of("Monitoare Gaming", "Laptopuri & PC-uri", "Periferice & Scaune Gaming", "Console"));
-        CATEGORY_MAP.put("fitness", List.of("Ceasuri Smart & Brățări"));
-        CATEGORY_MAP.put("supravegheresecuritate", List.of("Camere Supraveghere"));
-        CATEGORY_MAP.put("bebelusicopii", List.of("Scaune Auto"));
-        CATEGORY_MAP.put("petshopanimale", List.of("Accesorii & Îngrijire Animale", "Aspiratoare & Păr Animale", "Ansamblu de joacă & Hrană", "Toalete Inteligente Pisici"));
+        CATEGORY_MAP.put("tech", List.of(
+                "Televizoare OLED & LED",
+                "Telefoane Apple",
+                "Tablete & E-readers",
+                "Audio & Căști Bluetooth"));
+        CATEGORY_MAP.put("ingrijirepersonala", List.of(
+                "Plăci de păr & Perii de îndreptat",
+                "Uscătoare de păr", "Aparate de tuns",
+                "Ondulatoare"));
+        CATEGORY_MAP.put("home", List.of(
+                "Aspiratoare Verticale",
+                "Purificatoare", "Espressoare",
+                "Electrocasnice Mari"));
+        CATEGORY_MAP.put("gaming", List.of(
+                "Monitoare Gaming", "Laptopuri & PC-uri",
+                "Periferice & Scaune Gaming", "Console"));
+        CATEGORY_MAP.put("fitness", List.of(
+                "Ceasuri Smart & Brățări"));
+        CATEGORY_MAP.put("supravegheresecuritate", List.of(
+                "Camere Supraveghere"));
+        CATEGORY_MAP.put("bebelusicopii", List.of(
+                "Scaune Auto"));
+        CATEGORY_MAP.put("sanatatepharma", List.of(
+                "Suplimente & Vitamine",
+                "Tensiometre & Aparate Medicale",
+                "Termometre & Nebulizatoare",
+                "Dispozitive Îngrijire Dentară",
+                "Optică & Picături Ochi"
+        ));
+        CATEGORY_MAP.put("carti", List.of(
+                "Ficțiune & Bestsellers",
+                "Dezvoltare Personală & Psihologie",
+                "Cărți pentru Copii & Tineret",
+                "Business & Finanțe",
+                "Manga & Benzi Desenate",
+                "E-readers & Cărți Audio"
+        ));
+        CATEGORY_MAP.put("petshopanimale", List.of(
+                "Accesorii & Îngrijire Animale",
+                "Aspiratoare & Păr Animale",
+                "Ansamblu de joacă & Hrană",
+                "Toalete Inteligente Pisici"));
     }
 
     public GuideServiceImpl(GuideRepository guideRepository) {
