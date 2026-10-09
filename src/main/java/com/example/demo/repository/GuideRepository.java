@@ -16,35 +16,21 @@ import java.util.Optional;
 @Repository
 public interface GuideRepository extends JpaRepository<Guide, Long> {
 
-    // 1. Încărcare detaliată a UNUI SINGUR GHID (după slug) – Păstrat complet cu items/pros/cons
+    // 1. Încărcare detaliată a UNUI SINGUR GHID (după slug)
     @EntityGraph(attributePaths = {"items", "items.pros", "items.cons"})
     @Query("SELECT DISTINCT g FROM Guide g WHERE g.slug = :slug")
     Optional<Guide> findBySlug(@Param("slug") String slug);
 
-    // --- QUERY-URI OPTIMIZATE PENTRU LISTE (DTO SUMMARY) ---
+    // --- QUERY-URI PENTRU CATEGORII UNICE (SUBCATEGORII DIRECTE) ---
 
     @Query("SELECT new com.example.demo.dto.GuideSummaryDTO(g.id, g.title, g.slug, g.category, g.summary, g.bannerImageUrl, g.updatedAt, COALESCE(g.viewsCount, 0)) " +
             "FROM Guide g WHERE LOWER(g.category) LIKE LOWER(CONCAT('%', :category, '%')) ORDER BY g.updatedAt DESC")
     List<GuideSummaryDTO> findDTOByCategoryIgnoreCaseOrderByUpdatedAtDesc(@Param("category") String category);
 
     @Query("SELECT new com.example.demo.dto.GuideSummaryDTO(g.id, g.title, g.slug, g.category, g.summary, g.bannerImageUrl, g.updatedAt, COALESCE(g.viewsCount, 0)) " +
-            "FROM Guide g ORDER BY g.updatedAt DESC")
-    List<GuideSummaryDTO> findAllDTOByOrderByUpdatedAtDesc();
-
-    @Query("SELECT new com.example.demo.dto.GuideSummaryDTO(g.id, g.title, g.slug, g.category, g.summary, g.bannerImageUrl, g.updatedAt, COALESCE(g.viewsCount, 0)) " +
-            "FROM Guide g WHERE g.category IN :categories ORDER BY g.updatedAt DESC")
-    List<GuideSummaryDTO> findDTOByCategoryInIgnoreCase(@Param("categories") List<String> categories);
-
-    // --- SORTARE DUPĂ VIZUALIZĂRI ---
-    @Query("SELECT new com.example.demo.dto.GuideSummaryDTO(g.id, g.title, g.slug, g.category, g.summary, g.bannerImageUrl, g.updatedAt, COALESCE(g.viewsCount, 0)) " +
-            "FROM Guide g ORDER BY COALESCE(g.viewsCount, 0) DESC, g.updatedAt DESC")
-    List<GuideSummaryDTO> findAllDTOByOrderByViewsCountDesc();
-
-    @Query("SELECT new com.example.demo.dto.GuideSummaryDTO(g.id, g.title, g.slug, g.category, g.summary, g.bannerImageUrl, g.updatedAt, COALESCE(g.viewsCount, 0)) " +
             "FROM Guide g WHERE LOWER(g.category) LIKE LOWER(CONCAT('%', :category, '%')) ORDER BY COALESCE(g.viewsCount, 0) DESC, g.updatedAt DESC")
     List<GuideSummaryDTO> findDTOByCategoryIgnoreCaseOrderByViewsCountDesc(@Param("category") String category);
 
-    // --- SORTARE DUPĂ PREȚ ---
     @Query("SELECT new com.example.demo.dto.GuideSummaryDTO(g.id, g.title, g.slug, g.category, g.summary, g.bannerImageUrl, g.updatedAt, COALESCE(g.viewsCount, 0)) " +
             "FROM Guide g LEFT JOIN g.items i WHERE LOWER(g.category) LIKE LOWER(CONCAT('%', :category, '%')) GROUP BY g.id ORDER BY COALESCE(MIN(i.estimatedPrice), 0) ASC")
     List<GuideSummaryDTO> findDTOByCategoryOrderByMinPriceAsc(@Param("category") String category);
@@ -52,6 +38,36 @@ public interface GuideRepository extends JpaRepository<Guide, Long> {
     @Query("SELECT new com.example.demo.dto.GuideSummaryDTO(g.id, g.title, g.slug, g.category, g.summary, g.bannerImageUrl, g.updatedAt, COALESCE(g.viewsCount, 0)) " +
             "FROM Guide g LEFT JOIN g.items i WHERE LOWER(g.category) LIKE LOWER(CONCAT('%', :category, '%')) GROUP BY g.id ORDER BY COALESCE(MAX(i.estimatedPrice), 0) DESC")
     List<GuideSummaryDTO> findDTOByCategoryOrderByMaxPriceDesc(@Param("category") String category);
+
+
+    // --- QUERY-URI PENTRU CATEGORII MULTIPLE (CATEGORY_MAP / GRUPE DE SUBCATEGORII) ---
+
+    @Query("SELECT new com.example.demo.dto.GuideSummaryDTO(g.id, g.title, g.slug, g.category, g.summary, g.bannerImageUrl, g.updatedAt, COALESCE(g.viewsCount, 0)) " +
+            "FROM Guide g WHERE LOWER(g.category) IN :categories ORDER BY g.updatedAt DESC")
+    List<GuideSummaryDTO> findDTOByCategoryInOrderByUpdatedAtDesc(@Param("categories") List<String> categories);
+
+    @Query("SELECT new com.example.demo.dto.GuideSummaryDTO(g.id, g.title, g.slug, g.category, g.summary, g.bannerImageUrl, g.updatedAt, COALESCE(g.viewsCount, 0)) " +
+            "FROM Guide g WHERE LOWER(g.category) IN :categories ORDER BY COALESCE(g.viewsCount, 0) DESC, g.updatedAt DESC")
+    List<GuideSummaryDTO> findDTOByCategoryInOrderByViewsCountDesc(@Param("categories") List<String> categories);
+
+    @Query("SELECT new com.example.demo.dto.GuideSummaryDTO(g.id, g.title, g.slug, g.category, g.summary, g.bannerImageUrl, g.updatedAt, COALESCE(g.viewsCount, 0)) " +
+            "FROM Guide g LEFT JOIN g.items i WHERE LOWER(g.category) IN :categories GROUP BY g.id ORDER BY COALESCE(MIN(i.estimatedPrice), 0) ASC")
+    List<GuideSummaryDTO> findDTOByCategoryInOrderByMinPriceAsc(@Param("categories") List<String> categories);
+
+    @Query("SELECT new com.example.demo.dto.GuideSummaryDTO(g.id, g.title, g.slug, g.category, g.summary, g.bannerImageUrl, g.updatedAt, COALESCE(g.viewsCount, 0)) " +
+            "FROM Guide g LEFT JOIN g.items i WHERE LOWER(g.category) IN :categories GROUP BY g.id ORDER BY COALESCE(MAX(i.estimatedPrice), 0) DESC")
+    List<GuideSummaryDTO> findDTOByCategoryInOrderByMaxPriceDesc(@Param("categories") List<String> categories);
+
+
+    // --- QUERY-URI PENTRU TOATE CATEGORIILE ("ALL") ---
+
+    @Query("SELECT new com.example.demo.dto.GuideSummaryDTO(g.id, g.title, g.slug, g.category, g.summary, g.bannerImageUrl, g.updatedAt, COALESCE(g.viewsCount, 0)) " +
+            "FROM Guide g ORDER BY g.updatedAt DESC")
+    List<GuideSummaryDTO> findAllDTOByOrderByUpdatedAtDesc();
+
+    @Query("SELECT new com.example.demo.dto.GuideSummaryDTO(g.id, g.title, g.slug, g.category, g.summary, g.bannerImageUrl, g.updatedAt, COALESCE(g.viewsCount, 0)) " +
+            "FROM Guide g ORDER BY COALESCE(g.viewsCount, 0) DESC, g.updatedAt DESC")
+    List<GuideSummaryDTO> findAllDTOByOrderByViewsCountDesc();
 
     @Query("SELECT new com.example.demo.dto.GuideSummaryDTO(g.id, g.title, g.slug, g.category, g.summary, g.bannerImageUrl, g.updatedAt, COALESCE(g.viewsCount, 0)) " +
             "FROM Guide g LEFT JOIN g.items i GROUP BY g.id ORDER BY COALESCE(MIN(i.estimatedPrice), 0) ASC")
@@ -61,7 +77,9 @@ public interface GuideRepository extends JpaRepository<Guide, Long> {
             "FROM Guide g LEFT JOIN g.items i GROUP BY g.id ORDER BY COALESCE(MAX(i.estimatedPrice), 0) DESC")
     List<GuideSummaryDTO> findAllDTOOrderByMaxPriceDesc();
 
+
     // --- CĂUTARE GLOBALĂ ---
+
     @Query("SELECT new com.example.demo.dto.GuideSummaryDTO(g.id, g.title, g.slug, g.category, g.summary, g.bannerImageUrl, g.updatedAt, COALESCE(g.viewsCount, 0)) " +
             "FROM Guide g WHERE " +
             "LOWER(g.title) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
