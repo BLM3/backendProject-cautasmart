@@ -45,7 +45,7 @@ public class GuideServiceImpl implements GuideService {
                 "Camere Supraveghere"));
         CATEGORY_MAP.put("bebelusicopii", List.of(
                 "Scaune Auto"));
-        CATEGORY_MAP.put("sanatatepharma", List.of(
+        CATEGORY_MAP.put("sanatatefarma", List.of(
                 "Suplimente & Vitamine",
                 "Tensiometre & Aparate Medicale",
                 "Termometre & Nebulizatoare",
@@ -92,9 +92,10 @@ public class GuideServiceImpl implements GuideService {
         String key = normalizeCategoryKey(decodedCategory);
 
         if (CATEGORY_MAP.containsKey(key)) {
-            List<String> subcategories = CATEGORY_MAP.get(key).stream()
-                    .map(String::toLowerCase)
-                    .toList();
+            List<String> subcategories = CATEGORY_MAP.get(key);
+//            List<String> subcategories = CATEGORY_MAP.get(key).stream()
+//                    .map(String::toLowerCase)
+//                    .toList();
             return getSortedGuidesForCategories(subcategories, cleanSort);
         }
 
