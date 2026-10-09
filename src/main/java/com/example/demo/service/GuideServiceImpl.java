@@ -152,8 +152,9 @@ public class GuideServiceImpl implements GuideService {
             return null;
         }
         try {
-            String formatted = category.replace("+", " ");
-            String decoded = URLDecoder.decode(formatted, StandardCharsets.UTF_8.name()).trim();
+//            String formatted = category.replace("+", " ");
+//            String decoded = URLDecoder.decode(formatted, StandardCharsets.UTF_8.name()).trim();
+            String decoded = URLDecoder.decode(category, StandardCharsets.UTF_8.name()).trim();
             return decoded.startsWith("-") ? decoded.substring(1).trim() : decoded;
         } catch (Exception e) {
             return category.replace("+", " ").trim();
