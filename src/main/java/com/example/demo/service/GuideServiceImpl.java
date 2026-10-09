@@ -10,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
+import java.text.Normalizer;
 import java.time.LocalDateTime;
 import java.util.*;
 
@@ -53,15 +54,8 @@ public class GuideServiceImpl implements GuideService {
             return getSortedAllGuides(cleanSort);
         }
 
-        String key = decodedCategory.toLowerCase()
-                .replace(" ", "")
-                .replace("-", "")
-                .replace("+", "")
-                .replace("&", "")
-                .replace("ș", "s").replace("ş", "s")
-                .replace("î", "t").replace("î", "t")
-                .replace("ț", "t").replace("ţ", "t")
-                .replace("ă", "a").replace("â", "a");
+        // Normalizare robustă pentru cheia din map (ex: "Îngrijire Personală" -> "ingrijirepersonala")
+        String key = normalizeCategoryKey(decodedCategory);
 
         if (CATEGORY_MAP.containsKey(key)) {
             List<String> subcategories = CATEGORY_MAP.get(key).stream()
@@ -71,6 +65,24 @@ public class GuideServiceImpl implements GuideService {
         }
 
         return getSortedGuidesForSingleCategory(decodedCategory, cleanSort);
+    }
+
+    private String normalizeCategoryKey(String input) {
+        if (input == null) return "";
+
+        // Convertim la litere mici
+        String lower = input.toLowerCase();
+
+        // Eliminăm diacriticele românești prin descompunere Unicode (NFD)
+        String normalized = Normalizer.normalize(lower, Normalizer.Form.NFD)
+                .replaceAll("\\p{M}", "");
+
+        // Curățăm caracterele speciale, spațiile și cratimele
+        return normalized
+                .replace(" ", "")
+                .replace("-", "")
+                .replace("+", "")
+                .replace("&", "");
     }
 
     private List<GuideSummaryDTO> getSortedGuidesForCategories(List<String> categories, String cleanSort) {
