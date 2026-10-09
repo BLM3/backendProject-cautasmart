@@ -59,6 +59,7 @@ public class GuideServiceImpl implements GuideService {
                 .replace("+", "")
                 .replace("&", "")
                 .replace("ș", "s").replace("ş", "s")
+                .replace("î", "t").replace("î", "t")
                 .replace("ț", "t").replace("ţ", "t")
                 .replace("ă", "a").replace("â", "a");
 
