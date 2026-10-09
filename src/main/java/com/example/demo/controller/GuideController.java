@@ -20,12 +20,23 @@ public class GuideController {
     }
 
     // 1. Lista de ghiduri ușoară (DTO) pentru Homepage sau Pagina de Categorie
+//    @GetMapping
+//    public ResponseEntity<List<GuideSummaryDTO>> getGuides(
+//            @RequestParam(required = false) String category,
+//            @RequestParam(required = false, defaultValue = "recent") String sortBy) {
+//
+//        return ResponseEntity.ok(guideService.getGuidesByCategoryAndSort(category, sortBy));
+//    }
     @GetMapping
     public ResponseEntity<List<GuideSummaryDTO>> getGuides(
             @RequestParam(required = false) String category,
-            @RequestParam(required = false, defaultValue = "recent") String sortBy) {
+            @RequestParam(value = "sortBy", required = false) String sortBy,
+            @RequestParam(value = "sort", required = false) String sortParam) {
 
-        return ResponseEntity.ok(guideService.getGuidesByCategoryAndSort(category, sortBy));
+        // Dacă frontend-ul a trimis 'sort' în loc de 'sortBy', îl folosim pe acela
+        String effectiveSort = (sortBy != null && !sortBy.isBlank()) ? sortBy : sortParam;
+
+        return ResponseEntity.ok(guideService.getGuidesByCategoryAndSort(category, effectiveSort));
     }
 
     // 2. Un singur ghid complet cu toate produsele/pros/cons (după Slug)
